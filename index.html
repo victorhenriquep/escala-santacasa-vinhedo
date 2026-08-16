@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Escalas Médicas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans p-6">
+
+    <div class="max-w-4xl mx-auto">
+        
+        <!-- TELA DE LOGIN E CADASTRO (Aparece se não estiver logado) -->
+        <div id="secao-auth" class="bg-white p-6 rounded-lg shadow-md max-w-md mx-auto my-12">
+            <h2 id="titulo-auth" class="text-2xl font-bold text-gray-800 mb-4 text-center">Acessar o Sistema</h2>
+            
+            <form id="form-auth" onsubmit="manipularAuth(event)" class="space-y-4">
+                <!-- Campo Nome (Apenas para Cadastro) -->
+                <div id="campo-nome" class="hidden">
+                    <label class="block text-sm font-semibold text-gray-700">Nome Completo</label>
+                    <input type="text" id="auth-nome" class="w-full p-2 border rounded focus:outline-blue-500" placeholder="Ex: Dra. Babi">
+                </div>
+
+                <!-- Campo Tipo de Perfil (Apenas para Cadastro) -->
+                <div id="campo-papel" class="hidden">
+                    <label class="block text-sm font-semibold text-gray-700">Tipo de Conta</label>
+                    <select id="auth-papel" class="w-full p-2 border rounded focus:outline-blue-500">
+                        <option value="medico">Médico(a)</option>
+                        <option value="admin">Administrador(a)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700">E-mail</label>
+                    <input type="email" id="auth-email" required class="w-full p-2 border rounded focus:outline-blue-500" placeholder="seu@email.com">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700">Senha</label>
+                    <input type="password" id="auth-senha" required class="w-full p-2 border rounded focus:outline-blue-500" placeholder="******">
+                </div>
+
+                <button type="submit" id="btn-submit-auth" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded transition">
+                    Entrar
+                </button>
+            </form>
+
+            <div class="mt-4 text-center text-sm text-gray-600">
+                <span id="texto-alternar">Não tem uma conta?</span>
+                <button type="button" onclick="alternarModoAuth()" id="btn-alternar" class="text-blue-600 font-semibold underline ml-1">
+                    Cadastre-se
+                </button>
+            </div>
+        </div>
+
+        <!-- SISTEMA PRINCIPAL (Aparece apenas quando LOGADO) -->
+        <div id="secao-app" class="hidden">
+            <!-- Cabeçalho Principal -->
+            <header class="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">Escalas de Plantão</h1>
+                    <p class="text-sm text-gray-500">
+                        Usuário: <span id="nome-usuario-logado" class="font-bold text-blue-600">-</span> 
+                        (<span id="papel-usuario-logado" class="capitalize">-</span>)
+                    </p>
+                </div>
+                <button onclick="fazerLogout()" class="bg-red-500 hover:bg-red-600 text-white text-sm font-semibold px-3 py-2 rounded transition">
+                    🚪 Sair
+                </button>
+            </header>
+
+            <!-- PAINEL DA ADMINISTRADORA -->
+            <div id="painel-admin" class="hidden mb-8 bg-white p-5 rounded-lg shadow-sm border-t-4 border-indigo-500">
+                <h2 class="text-lg font-bold text-indigo-700 mb-4">Adicionar Novo Plantão</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">Data</label>
+                        <input type="date" id="nova-data" class="w-full p-2 border rounded">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">Horário</label>
+                        <select id="novo-horario" class="w-full p-2 border rounded">
+                            <option value="07:00 às 19:00">Dia (07:00 às 19:00)</option>
+                            <option value="19:00 às 07:00">Noite (19:00 às 07:00)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">Médico(a) Responsável</label>
+                        <select id="novo-medico" class="w-full p-2 border rounded">
+                            <option value="">Carregando médicos...</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="criarPlantao()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-semibold transition w-full md:w-auto">
+                    ➕ Escalar Médico
+                </button>
+            </div>
+
+            <!-- Área dos Plantões -->
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">Agenda de Plantões</h2>
+            <div id="lista-plantoes" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Cards gerados pelo JS -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bibliotecas do Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore-compat.js"></script>
+
+    <!-- Nosso código JavaScript -->
+    <script src="js/app.js"></script>
+</body>
+</html>
