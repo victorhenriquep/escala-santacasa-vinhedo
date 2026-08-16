@@ -3,25 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Escalas Médicas</title>
+    <title>Santa Casa de Vinhedo - Escalas Médicas</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 font-sans p-6">
+<body class="bg-gray-100 font-sans p-4 md:p-6">
 
     <div class="max-w-4xl mx-auto">
         
-        <!-- TELA DE LOGIN E CADASTRO (Aparece se não estiver logado) -->
-        <div id="secao-auth" class="bg-white p-6 rounded-lg shadow-md max-w-md mx-auto my-12">
-            <h2 id="titulo-auth" class="text-2xl font-bold text-gray-800 mb-4 text-center">Acessar o Sistema</h2>
+        <!-- TELA DE LOGIN E CADASTRO -->
+        <div id="secao-auth" class="bg-white p-6 rounded-xl shadow-md max-w-md mx-auto my-12 border-t-4 border-blue-700">
+            <div class="text-center mb-6">
+                <span class="text-3xl">🏥</span>
+                <h1 class="text-xl font-bold text-gray-800 mt-2">Santa Casa de Vinhedo</h1>
+                <p class="text-xs text-gray-500">Portal de Gestão de Escalas Médicas</p>
+            </div>
+            
+            <h2 id="titulo-auth" class="text-lg font-semibold text-gray-700 mb-4 text-center">Acessar o Sistema</h2>
             
             <form id="form-auth" onsubmit="manipularAuth(event)" class="space-y-4">
-                <!-- Campo Nome (Apenas para Cadastro) -->
                 <div id="campo-nome" class="hidden">
                     <label class="block text-sm font-semibold text-gray-700">Nome Completo</label>
                     <input type="text" id="auth-nome" class="w-full p-2 border rounded focus:outline-blue-500" placeholder="Ex: Dra. Babi">
                 </div>
 
-                <!-- Campo Tipo de Perfil (Apenas para Cadastro) -->
                 <div id="campo-papel" class="hidden">
                     <label class="block text-sm font-semibold text-gray-700">Tipo de Conta</label>
                     <select id="auth-papel" class="w-full p-2 border rounded focus:outline-blue-500">
@@ -40,65 +44,75 @@
                     <input type="password" id="auth-senha" required class="w-full p-2 border rounded focus:outline-blue-500" placeholder="******">
                 </div>
 
-                <button type="submit" id="btn-submit-auth" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded transition">
+                <button type="submit" id="btn-submit-auth" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 rounded transition">
                     Entrar
                 </button>
             </form>
 
             <div class="mt-4 text-center text-sm text-gray-600">
                 <span id="texto-alternar">Não tem uma conta?</span>
-                <button type="button" onclick="alternarModoAuth()" id="btn-alternar" class="text-blue-600 font-semibold underline ml-1">
+                <button type="button" onclick="alternarModoAuth()" id="btn-alternar" class="text-blue-700 font-semibold underline ml-1">
                     Cadastre-se
                 </button>
             </div>
         </div>
 
-        <!-- SISTEMA PRINCIPAL (Aparece apenas quando LOGADO) -->
+        <!-- SISTEMA PRINCIPAL -->
         <div id="secao-app" class="hidden">
             <!-- Cabeçalho Principal -->
-            <header class="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm mb-6">
+            <header class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-6 border-l-4 border-blue-700">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-800">Escalas de Plantão</h1>
-                    <p class="text-sm text-gray-500">
-                        Usuário: <span id="nome-usuario-logado" class="font-bold text-blue-600">-</span> 
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">🏥</span>
+                        <h1 class="text-xl font-bold text-gray-800">Santa Casa de Vinhedo</h1>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Usuário: <span id="nome-usuario-logado" class="font-bold text-blue-700">-</span> 
                         (<span id="papel-usuario-logado" class="capitalize">-</span>)
                     </p>
                 </div>
-                <button onclick="fazerLogout()" class="bg-red-500 hover:bg-red-600 text-white text-sm font-semibold px-3 py-2 rounded transition">
+                <button onclick="fazerLogout()" class="bg-gray-200 hover:bg-red-500 hover:text-white text-gray-700 text-xs font-semibold px-3 py-2 rounded transition">
                     🚪 Sair
                 </button>
             </header>
 
             <!-- PAINEL DA ADMINISTRADORA -->
-            <div id="painel-admin" class="hidden mb-8 bg-white p-5 rounded-lg shadow-sm border-t-4 border-indigo-500">
-                <h2 class="text-lg font-bold text-indigo-700 mb-4">Adicionar Novo Plantão</h2>
+            <div id="painel-admin" class="hidden mb-8 bg-white p-5 rounded-xl shadow-sm border-t-4 border-indigo-600">
+                <h2 class="text-md font-bold text-indigo-800 mb-4 flex items-center gap-2">
+                    <span>➕</span> Escalar Novo Plantão
+                </h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                     <div>
-                        <label class="block text-sm text-gray-600 mb-1">Data</label>
-                        <input type="date" id="nova-data" class="w-full p-2 border rounded">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Data</label>
+                        <input type="date" id="nova-data" class="w-full p-2 text-sm border rounded">
                     </div>
                     <div>
-                        <label class="block text-sm text-gray-600 mb-1">Horário</label>
-                        <select id="novo-horario" class="w-full p-2 border rounded">
-                            <option value="07:00 às 19:00">Dia (07:00 às 19:00)</option>
-                            <option value="19:00 às 07:00">Noite (19:00 às 07:00)</option>
-                        </select>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Hora de Início</label>
+                        <input type="time" id="hora-inicio" class="w-full p-2 text-sm border rounded">
                     </div>
                     <div>
-                        <label class="block text-sm text-gray-600 mb-1">Médico(a) Responsável</label>
-                        <select id="novo-medico" class="w-full p-2 border rounded">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Hora de Fim</label>
+                        <input type="time" id="hora-fim" class="w-full p-2 text-sm border rounded">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Médico(a) Responsável</label>
+                        <select id="novo-medico" class="w-full p-2 text-sm border rounded">
                             <option value="">Carregando médicos...</option>
                         </select>
                     </div>
                 </div>
-                <button onclick="criarPlantao()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-semibold transition w-full md:w-auto">
-                    ➕ Escalar Médico
+                <button onclick="criarPlantao()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-semibold text-sm transition w-full md:w-auto">
+                    Confirmar Escala
                 </button>
             </div>
 
             <!-- Área dos Plantões -->
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">Agenda de Plantões</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-gray-800">Meus Plantões</h2>
+                <span id="contador-plantoes" class="text-xs bg-blue-100 text-blue-800 font-semibold px-2.5 py-1 rounded-full">0 plantões</span>
+            </div>
+            
             <div id="lista-plantoes" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- Cards gerados pelo JS -->
             </div>

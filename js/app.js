@@ -1,4 +1,4 @@
-// 1. Configuração do Firebase
+// Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyD_dQkkgOSdPRUP9RGlsGdb0GDC5Lu0_6M",
   authDomain: "escala-medica-21ecd.firebaseapp.com",
@@ -12,12 +12,11 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Estado global do usuário logado
 let modoCadastro = false;
 let usuarioAtualDados = null;
 let plantoesDaNuvem = [];
 
-// 2. Alternar entre formulário de Login e Cadastro
+// Alternar entre Login e Cadastro
 function alternarModoAuth() {
     modoCadastro = !modoCadastro;
     
@@ -30,7 +29,7 @@ function alternarModoAuth() {
     document.getElementById('campo-papel').classList.toggle('hidden', !modoCadastro);
 }
 
-// 3. Fazer Login ou Cadastro
+// Autenticação (Login / Cadastro)
 function manipularAuth(event) {
     event.preventDefault();
     const email = document.getElementById('auth-email').value;
@@ -47,7 +46,6 @@ function manipularAuth(event) {
 
         auth.createUserWithEmailAndPassword(email, senha)
             .then((credenciais) => {
-                // Salva os dados do perfil do usuário no Firestore
                 return db.collection('usuarios').doc(credenciais.user.uid).set({
                     nome: nome,
                     papel: papel,
@@ -55,7 +53,7 @@ function manipularAuth(event) {
                 });
             })
             .then(() => {
-                alert("Conta criada com sucesso!");
+                alert("Conta criada com sucesso na Santa Casa de Vinhedo!");
             })
             .catch((error) => {
                 alert("Erro ao criar conta: " + error.message);
@@ -68,30 +66,26 @@ function manipularAuth(event) {
     }
 }
 
-// 4. Logout
 function fazerLogout() {
     auth.signOut();
 }
 
-// 5. Monitorar o Estado de Login em Tempo Real
+// Escuta o estado da autenticação
 auth.onAuthStateChanged((user) => {
     const secaoAuth = document.getElementById('secao-auth');
     const secaoApp = document.getElementById('secao-app');
 
     if (user) {
-        // Usuário está logado: busca os dados do perfil no Firestore
         db.collection('usuarios').doc(user.uid).get().then((doc) => {
             if (doc.exists) {
                 usuarioAtualDados = doc.data();
                 
-                // Atualiza a tela
                 document.getElementById('nome-usuario-logado').innerText = usuarioAtualDados.nome;
-                document.getElementById('papel-usuario-logado').innerText = usuarioAtualDados.papel === 'admin' ? 'Administrador' : 'Médico';
+                document.getElementById('papel-usuario-logado').innerText = usuarioAtualDados.papel === 'admin' ? 'Administrador(a)' : 'Médico(a)';
                 
-                // Exibe painel admin se for administrador
                 if (usuarioAtualDados.papel === 'admin') {
                     document.getElementById('painel-admin').classList.remove('hidden');
-                    escutarMedicosCadastrados(); // Carrega médicos em ordem alfabética no menu
+                    escutarMedicosCadastrados();
                 } else {
                     document.getElementById('painel-admin').classList.add('hidden');
                 }
@@ -99,34 +93,31 @@ auth.onAuthStateChanged((user) => {
                 secaoAuth.classList.add('hidden');
                 secaoApp.classList.remove('hidden');
                 
-                // Inicia escuta dos plantões
                 escutarPlantoes();
             }
         });
     } else {
-        // Usuário deslogado
         usuarioAtualDados = null;
         secaoAuth.classList.remove('hidden');
         secaoApp.classList.add('hidden');
     }
 });
 
-// 6. Buscar médicos cadastrados em ordem alfabética para o Select da Administradora
+// Lista os médicos em ordem alfabética para o administrador
 function escutarMedicosCadastrados() {
     db.collection('usuarios').where('papel', '==', 'medico').onSnapshot((snapshot) => {
         const selectMedico = document.getElementById('novo-medico');
-        selectMedico.innerHTML = '<option value="">Selecione um(a) médico(a)...</option>';
+        selectMedico.innerHTML = '<option value="">Selecione o(a) médico(a)...</option>';
         
         const medicos = [];
         snapshot.forEach(doc => {
             medicos.push(doc.data());
         });
 
-        // Ordenar os médicos em ordem alfabética pelo nome (A-Z)
         medicos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
 
         if (medicos.length === 0) {
-            selectMedico.innerHTML = '<option value="">Nenhum médico cadastrado ainda</option>';
+            selectMedico.innerHTML = '<option value="">Nenhum médico cadastrado</option>';
             return;
         }
 
@@ -139,27 +130,32 @@ function escutarMedicosCadastrados() {
     });
 }
 
-// 7. Salvar novo plantão no Firebase (Apenas Admin)
+// Criação do plantão com horários customizáveis de início e fim
 function criarPlantao() {
     const dataInput = document.getElementById('nova-data').value;
-    const horarioInput = document.getElementById('novo-horario').value;
+    const horaInicio = document.getElementById('hora-inicio').value;
+    const horaFim = document.getElementById('hora-fim').value;
     const medicoInput = document.getElementById('novo-medico').value;
 
-    if (!dataInput || !medicoInput) {
-        alert("Por favor, selecione a data e o médico responsável!");
+    if (!dataInput || !horaInicio || !horaFim || !medicoInput) {
+        alert("Por favor, preencha a data, horário de início, fim e selecione o médico!");
         return;
     }
 
+    const horarioFormatado = `${horaInicio} às ${horaFim}`;
+
     db.collection('plantoes').add({
         data: dataInput,
-        horario: horarioInput,
+        horario: horarioFormatado,
         medico: medicoInput,
         status: "PENDENTE_APROVACAO",
         criadoEm: firebase.firestore.FieldValue.serverTimestamp()
     })
     .then(() => {
-        alert("Plantão criado com sucesso!");
+        alert("Plantão cadastrado com sucesso!");
         document.getElementById('nova-data').value = '';
+        document.getElementById('hora-inicio').value = '';
+        document.getElementById('hora-fim').value = '';
         document.getElementById('novo-medico').value = '';
     })
     .catch((error) => {
@@ -167,7 +163,6 @@ function criarPlantao() {
     });
 }
 
-// 8. Aceitar Plantão
 function aceitarPlantao(idDoPlantao) {
     db.collection('plantoes').doc(idDoPlantao).update({
         status: 'CONFIRMADO',
@@ -175,7 +170,7 @@ function aceitarPlantao(idDoPlantao) {
     });
 }
 
-// 9. Escutar atualizações de plantões
+// Carrega os plantões do Firestore
 function escutarPlantoes() {
     db.collection('plantoes').onSnapshot((snapshot) => {
         plantoesDaNuvem = [];
@@ -189,23 +184,34 @@ function escutarPlantoes() {
     });
 }
 
-// 10. Desenhar os cards na tela
+// Renderiza plantões (Filtrando por privacidade do médico)
 function renderizarPlantoes() {
     const conteiner = document.getElementById('lista-plantoes');
+    const contador = document.getElementById('contador-plantoes');
     conteiner.innerHTML = ''; 
 
-    if (plantoesDaNuvem.length === 0) {
-        conteiner.innerHTML = `<p class="text-gray-500 text-sm col-span-2">Nenhum plantão cadastrado no momento.</p>`;
+    // Filtra para mostrar todos para o Admin e apenas os do próprio médico para ele mesmo
+    let plantoesVisiveis = plantoesDaNuvem;
+    if (usuarioAtualDados.papel === 'medico') {
+        plantoesVisiveis = plantoesDaNuvem.filter(plantao => 
+            plantao.medico && plantao.medico.trim().toLowerCase() === usuarioAtualDados.nome.trim().toLowerCase()
+        );
+    }
+
+    contador.innerText = `${plantoesVisiveis.length} plantão(ões)`;
+
+    if (plantoesVisiveis.length === 0) {
+        conteiner.innerHTML = `<p class="text-gray-500 text-sm col-span-2 bg-white p-4 rounded-lg shadow-sm">Nenhum plantão agendado para exibição.</p>`;
         return;
     }
 
-    plantoesDaNuvem.forEach(plantao => {
+    plantoesVisiveis.forEach(plantao => {
         let corFundo = '';
         let corBorda = '';
         let badge = '';
         let botoes = '';
 
-        const eOMedicoDoPlantao = usuarioAtualDados.papel === 'medico' && plantao.medico.toLowerCase().includes(usuarioAtualDados.nome.toLowerCase());
+        const eOMedicoDoPlantao = usuarioAtualDados.papel === 'medico';
         const mostrarBotoes = eOMedicoDoPlantao && plantao.status === 'PENDENTE_APROVACAO';
 
         if (plantao.status === 'PENDENTE_APROVACAO') {
@@ -215,8 +221,8 @@ function renderizarPlantoes() {
             
             if (mostrarBotoes) {
                 botoes = `
-                    <div class="mt-4 flex gap-2">
-                        <button onclick="aceitarPlantao('${plantao.id}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold transition">✅ ACEITAR</button>
+                    <div class="mt-4">
+                        <button onclick="aceitarPlantao('${plantao.id}')" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-semibold transition">✅ ACEITAR PLANTÃO</button>
                     </div>
                 `;
             } else if (usuarioAtualDados.papel === 'admin') {
@@ -233,12 +239,12 @@ function renderizarPlantoes() {
         const dataBonita = partesData.length === 3 ? `${partesData[2]}/${partesData[1]}/${partesData[0]}` : plantao.data;
 
         const cardHTML = `
-            <div class="${corFundo} border-l-4 ${corBorda} p-4 rounded shadow-sm">
+            <div class="${corFundo} border-l-4 ${corBorda} p-4 rounded-lg shadow-sm">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-sm text-gray-500 font-semibold">Data: ${dataBonita}</p>
-                        <p class="text-lg font-bold text-gray-800">${plantao.horario}</p>
-                        <p class="text-md text-gray-700 mt-1">Médico: ${plantao.medico}</p>
+                        <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Data: ${dataBonita}</p>
+                        <p class="text-lg font-bold text-gray-800 my-1">⏰ ${plantao.horario}</p>
+                        <p class="text-sm font-medium text-gray-700">👨‍⚕️ ${plantao.medico}</p>
                     </div>
                     ${badge}
                 </div>
