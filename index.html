@@ -19,17 +19,16 @@
 <body class="bg-[#f0f3f6] min-h-screen text-gray-800 antialiased font-sans pb-10">
 
   <!-- CABEÇALHO INSTITUCIONAL -->
-  <header class="shadow-md mb-6">
+  <header class="shadow-md mb-4">
     <!-- Barra Superior Branca/Cinza Claro com a Logo -->
-    <div class="bg-[#f0f3f6] border-b border-gray-200 py-3">
+    <div class="bg-[#f0f3f6] border-b border-gray-200 py-2">
       <div class="max-w-6xl mx-auto px-4 flex justify-between items-center">
-        <!-- Logo Santa Casa de Vinhedo -->
         <div class="flex items-center gap-3">
-          <img src="img/logo.png" alt="Santa Casa de Vinhedo" class="h-10 md:h-12 object-contain">
+          <img src="img/logo.png" alt="Santa Casa de Vinhedo" class="h-8 md:h-10 object-contain">
         </div>
 
         <span
-          class="text-xs md:text-sm font-bold text-[#3f62ad] bg-blue-50 border border-[#3f62ad]/20 px-3 py-1.5 rounded-full hidden sm:inline-block">
+          class="text-xs font-bold text-[#3f62ad] bg-blue-50 border border-[#3f62ad]/20 px-3 py-1 rounded-full hidden sm:inline-block">
           Gestão de Plantões Médicos
         </span>
       </div>
@@ -37,16 +36,16 @@
 
     <!-- Barra Azul do Menu/Usuário -->
     <div class="bg-[#3f62ad] text-white">
-      <div class="max-w-6xl mx-auto px-4 py-2.5 flex justify-between items-center">
-        <span class="text-xs md:text-sm font-medium tracking-wide">Escala Médica e Escalas de Serviço</span>
+      <div class="max-w-6xl mx-auto px-4 py-2 flex justify-between items-center">
+        <span class="text-xs font-medium tracking-wide">Escala Médica e Escalas de Serviço</span>
 
         <div id="info-usuario" class="flex items-center gap-3 text-right">
           <div>
-            <p id="nome-usuario-logado" class="font-bold text-xs md:text-sm"></p>
+            <p id="nome-usuario-logado" class="font-bold text-xs"></p>
             <p id="papel-usuario-logado" class="text-[10px] text-blue-100"></p>
           </div>
           <button onclick="fazerLogout()"
-            class="bg-[#2d4985] hover:bg-[#233a6b] text-white text-xs px-3 py-1.5 rounded font-medium transition shadow-sm border border-white/20">
+            class="bg-[#2d4985] hover:bg-[#233a6b] text-white text-xs px-2.5 py-1 rounded font-medium transition shadow-sm border border-white/20">
             Sair
           </button>
         </div>
@@ -58,25 +57,24 @@
 
     <!-- SEÇÃO DE AUTENTICAÇÃO (LOGIN / CADASTRO) -->
     <section id="secao-auth"
-      class="max-w-md mx-auto bg-white p-6 md:p-8 rounded-xl shadow-lg border-t-4 border-[#3f62ad] mt-6">
+      class="max-w-md mx-auto bg-white p-6 rounded-xl shadow-lg border-t-4 border-[#3f62ad] mt-6">
 
-      <!-- Topo do Login com Símbolo e Nome -->
-      <div class="flex flex-col items-center mb-6">
+      <div class="flex flex-col items-center mb-5">
         <img src="img/logo.png" alt="Santa Casa de Vinhedo" class="h-10 md:h-12 object-contain mb-2">
         <h2 id="titulo-auth" class="text-xl font-bold text-[#1b6b88] text-center">Acessar o Sistema</h2>
       </div>
 
-      <form onsubmit="manipularAuth(event)" class="flex flex-col gap-4">
+      <form onsubmit="manipularAuth(event)" class="flex flex-col gap-3">
         <div id="campo-nome" class="hidden flex flex-col gap-1">
           <label class="text-xs font-bold text-gray-700">Nome Completo</label>
           <input type="text" id="auth-nome" placeholder="Ex: Dr. Carlos Silva"
-            class="border p-2.5 rounded-lg text-sm w-full border-gray-300 focus:ring-2 focus:ring-[#3f62ad] focus:border-[#3f62ad] outline-none">
+            class="border p-2 rounded-lg text-xs w-full border-gray-300 focus:ring-2 focus:ring-[#3f62ad] outline-none">
         </div>
 
         <div id="campo-papel" class="hidden flex flex-col gap-1">
           <label class="text-xs font-bold text-gray-700">Função</label>
           <select id="auth-papel"
-            class="border p-2.5 rounded-lg text-sm w-full border-gray-300 focus:ring-2 focus:ring-[#3f62ad] focus:border-[#3f62ad] outline-none bg-white">
+            class="border p-2 rounded-lg text-xs w-full border-gray-300 focus:ring-2 focus:ring-[#3f62ad] outline-none bg-white">
             <option value="medico">Médico(a)</option>
             <option value="admin">Administrador(a)</option>
           </select>
@@ -85,64 +83,72 @@
         <div class="flex flex-col gap-1">
           <label class="text-xs font-bold text-gray-700">E-mail</label>
           <input type="email" id="auth-email" required placeholder="seu@email.com"
-            class="border p-2.5 rounded-lg text-sm w-full border-gray-300 focus:ring-2 focus:ring-[#3f62ad] focus:border-[#3f62ad] outline-none">
+            class="border p-2 rounded-lg text-xs w-full border-gray-300 focus:ring-2 focus:ring-[#3f62ad] outline-none">
         </div>
 
         <div class="flex flex-col gap-1">
           <label class="text-xs font-bold text-gray-700">Senha</label>
           <input type="password" id="auth-senha" required placeholder="••••••••"
-            class="border p-2.5 rounded-lg text-sm w-full border-gray-300 focus:ring-2 focus:ring-[#3f62ad] focus:border-[#3f62ad] outline-none">
+            class="border p-2 rounded-lg text-xs w-full border-gray-300 focus:ring-2 focus:ring-[#3f62ad] outline-none">
         </div>
 
         <button type="submit" id="btn-submit-auth"
-          class="bg-[#3f62ad] hover:bg-[#2d4985] text-white font-bold py-3 rounded-lg transition mt-2 shadow-md">
+          class="bg-[#3f62ad] hover:bg-[#2d4985] text-white font-bold py-2.5 rounded-lg transition mt-2 text-xs shadow-md">
           Entrar
         </button>
       </form>
 
-      <div class="text-center mt-6 pt-4 border-t border-gray-100">
+      <div class="text-center mt-4 pt-3 border-t border-gray-100">
         <span id="texto-alternar" class="text-xs text-gray-600">Não tem uma conta?</span>
         <button type="button" onclick="alternarModoAuth()" id="btn-alternar"
-          class="text-xs font-bold text-[#1b6b88] hover:text-[#7cc242] hover:underline ml-1 transition cursor-pointer">
+          class="text-xs font-bold text-[#1b6b88] hover:underline ml-1 transition cursor-pointer">
           Cadastre-se
         </button>
       </div>
     </section>
 
     <!-- SEÇÃO PRINCIPAL DA APLICAÇÃO -->
-    <section id="secao-app" class="hidden flex flex-col gap-6">
+    <section id="secao-app" class="hidden flex flex-col gap-4">
 
       <!-- PAINEL ADMINISTRATIVO -->
-      <div id="painel-admin" class="bg-white p-4 md:p-6 rounded-xl shadow-md border-t-4 border-[#7cc242] hidden">
-        <h3 class="font-bold text-base md:text-lg text-[#1b6b88] mb-4 flex items-center gap-2">
+      <div id="painel-admin" class="bg-white p-3 md:p-4 rounded-lg shadow-sm border-t-4 border-[#7cc242] hidden">
+        <h3 class="font-bold text-sm md:text-base text-[#1b6b88] mb-2 flex items-center gap-1">
           <span>Escalar Novo Plantão</span>
         </h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
           <div>
-            <label class="text-xs font-bold text-gray-600 block mb-1">Data</label>
+            <label class="text-[11px] font-bold text-gray-600 block mb-0.5">Data</label>
             <input type="date" id="nova-data"
-              class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-[#3f62ad]">
+              class="w-full border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-[#3f62ad]">
           </div>
           <div>
-            <label class="text-xs font-bold text-gray-600 block mb-1">Hora Início</label>
+            <label class="text-[11px] font-bold text-gray-600 block mb-0.5">Hora Início</label>
             <input type="time" id="hora-inicio"
-              class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-[#3f62ad]">
+              class="w-full border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-[#3f62ad]">
           </div>
           <div>
-            <label class="text-xs font-bold text-gray-600 block mb-1">Hora Fim</label>
+            <label class="text-[11px] font-bold text-gray-600 block mb-0.5">Hora Fim</label>
             <input type="time" id="hora-fim"
-              class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-[#3f62ad]">
+              class="w-full border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-[#3f62ad]">
           </div>
           <div>
-            <label class="text-xs font-bold text-gray-600 block mb-1">Médico(a)</label>
+            <label class="text-[11px] font-bold text-gray-600 block mb-0.5">Tipo de Plantão</label>
+            <select id="novo-tipo"
+              class="w-full border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-[#3f62ad] bg-white">
+              <option value="comum">Comum (Máx 2)</option>
+              <option value="emergencia">Emergência (Máx 1)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] font-bold text-gray-600 block mb-0.5">Médico(a)</label>
             <select id="novo-medico"
-              class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-[#3f62ad] bg-white">
-              <option value="">Carregando médicos...</option>
+              class="w-full border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-[#3f62ad] bg-white">
+              <option value="">Carregando...</option>
             </select>
           </div>
           <div class="flex items-end">
             <button onclick="criarPlantao()"
-              class="w-full bg-[#3f62ad] hover:bg-[#2d4985] text-white font-bold py-2 px-4 rounded-lg text-sm transition shadow-sm">
+              class="w-full bg-[#3f62ad] hover:bg-[#2d4985] text-white font-bold py-1.5 px-3 rounded text-xs transition shadow-sm">
               + Escalar
             </button>
           </div>
@@ -150,23 +156,22 @@
       </div>
 
       <!-- CALENDÁRIO INTERATIVO -->
-      <div class="bg-white p-3 md:p-6 rounded-xl shadow-md w-full overflow-hidden border border-gray-100">
-        <div class="flex justify-between items-center mb-3 gap-2">
+      <div class="bg-white p-3 rounded-lg shadow-sm w-full overflow-hidden border border-gray-200">
+        <div class="flex justify-between items-center mb-2 gap-2">
           <button onclick="mudarMesCalendario(-1)"
-            class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs md:text-sm font-bold transition">
+            class="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-bold transition">
             ◀ Anter.
           </button>
-          <h3 id="titulo-mes-calendario" class="font-extrabold text-sm md:text-lg text-[#1b6b88] text-center"></h3>
+          <h3 id="titulo-mes-calendario" class="font-extrabold text-xs md:text-sm text-[#1b6b88] text-center"></h3>
           <button onclick="mudarMesCalendario(1)"
-            class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs md:text-sm font-bold transition">
+            class="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-bold transition">
             Próx. ▶
           </button>
         </div>
 
-        <p class="text-[11px] text-gray-500 text-center mb-3 font-medium">💡 Toque em qualquer dia para ver os detalhes
-          do plantão.</p>
+        <p class="text-[10px] text-gray-500 text-center mb-2">💡 Toque no dia para visualizar os plantões escalados.</p>
 
-        <div class="grid grid-cols-7 gap-1 text-center font-bold text-[10px] md:text-xs text-gray-500 mb-2">
+        <div class="grid grid-cols-7 gap-1 text-center font-bold text-[10px] text-gray-500 mb-1">
           <div>Dom</div>
           <div>Seg</div>
           <div>Ter</div>
@@ -177,33 +182,33 @@
         </div>
 
         <div id="grid-calendario" class="grid grid-cols-7 gap-1 w-full">
-          <!-- Renderizado dinamicamente via JS -->
+          <!-- Renderizado via JS -->
         </div>
       </div>
 
-      <!-- LISTA DE PLANTÕES -->
-      <div class="bg-white p-3 md:p-6 rounded-xl shadow-md w-full border border-gray-100">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="font-bold text-base md:text-lg text-[#1b6b88]">Meus Plantões / Escala</h3>
+      <!-- LISTA DE PLANTÕES (CARDS COMPACTOS) -->
+      <div class="bg-white p-3 rounded-lg shadow-sm w-full border border-gray-200">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-bold text-sm md:text-base text-[#1b6b88]">Meus Plantões / Escala</h3>
           <span id="contador-plantoes"
-            class="text-xs bg-blue-50 text-[#3f62ad] font-bold px-2.5 py-1 rounded-full border border-[#3f62ad]/20">0
-            plantões</span>
+            class="text-[11px] bg-blue-50 text-[#3f62ad] font-bold px-2 py-0.5 rounded-full border border-[#3f62ad]/20">0 plantões</span>
         </div>
 
-        <div id="lista-plantoes" class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-          <!-- Renderizado dinamicamente via JS -->
+        <!-- Layout em Grade Compacta (1 col celular, 2 tablet, 3 PC) -->
+        <div id="lista-plantoes" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <!-- Renderizado via JS -->
         </div>
 
         <!-- Paginação -->
         <div id="paginacao-container"
-          class="flex justify-between items-center mt-4 pt-3 border-t border-gray-100 hidden">
+          class="flex justify-between items-center mt-3 pt-2 border-t border-gray-100 hidden">
           <button id="btn-pag-anterior" onclick="mudarPagina(-1)"
-            class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg disabled:opacity-50 transition">
+            class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded disabled:opacity-50 transition">
             ◀ Anterior
           </button>
-          <span id="info-paginacao" class="text-xs font-medium text-gray-600">Página 1</span>
+          <span id="info-paginacao" class="text-[11px] font-medium text-gray-600">Página 1</span>
           <button id="btn-pag-proxima" onclick="mudarPagina(1)"
-            class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg disabled:opacity-50 transition">
+            class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded disabled:opacity-50 transition">
             Próxima ▶
           </button>
         </div>
@@ -214,47 +219,55 @@
 
   <!-- MODAL DE EDIÇÃO / REPASSE -->
   <div id="modal-editar" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 border-t-4 border-[#3f62ad]">
-      <h3 class="text-lg font-bold text-[#1b6b88] mb-4">Alterar / Repassar Plantão</h3>
-      <form onsubmit="salvarEdicaoPlantao(event)" class="flex flex-col gap-3">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-4 border-t-4 border-[#3f62ad]">
+      <h3 class="text-sm font-bold text-[#1b6b88] mb-3">Alterar / Repassar Plantão</h3>
+      <form onsubmit="salvarEdicaoPlantao(event)" class="flex flex-col gap-2.5">
         <div>
-          <label class="text-xs font-bold text-gray-600 block mb-1">Data</label>
+          <label class="text-[11px] font-bold text-gray-600 block mb-0.5">Data</label>
           <input type="date" id="edit-data" required
-            class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-[#3f62ad]">
+            class="w-full border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-[#3f62ad]">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="text-xs font-bold text-gray-600 block mb-1">Hora Início</label>
+            <label class="text-[11px] font-bold text-gray-600 block mb-0.5">Hora Início</label>
             <input type="time" id="edit-hora-inicio" required
-              class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-[#3f62ad]">
+              class="w-full border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-[#3f62ad]">
           </div>
           <div>
-            <label class="text-xs font-bold text-gray-600 block mb-1">Hora Fim</label>
+            <label class="text-[11px] font-bold text-gray-600 block mb-0.5">Hora Fim</label>
             <input type="time" id="edit-hora-fim" required
-              class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-[#3f62ad]">
+              class="w-full border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-[#3f62ad]">
           </div>
         </div>
         <div>
-          <label class="text-xs font-bold text-gray-600 block mb-1">Médico(a) Responsável</label>
-          <select id="edit-medico" required
-            class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-[#3f62ad] bg-white">
+          <label class="text-[11px] font-bold text-gray-600 block mb-0.5">Tipo de Plantão</label>
+          <select id="edit-tipo" required
+            class="w-full border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-[#3f62ad] bg-white">
+            <option value="comum">Comum (Máx 2)</option>
+            <option value="emergencia">Emergência (Máx 1)</option>
           </select>
         </div>
-        <div class="flex gap-2 justify-end mt-4">
+        <div>
+          <label class="text-[11px] font-bold text-gray-600 block mb-0.5">Médico(a) Responsável</label>
+          <select id="edit-medico" required
+            class="w-full border border-gray-300 p-1.5 rounded text-xs outline-none focus:border-[#3f62ad] bg-white">
+          </select>
+        </div>
+        <div class="flex gap-2 justify-end mt-2">
           <button type="button" onclick="fecharModalEditar()"
-            class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-xs font-bold transition">
+            class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-xs font-bold transition">
             Cancelar
           </button>
           <button type="submit"
-            class="px-4 py-2 bg-[#3f62ad] hover:bg-[#2d4985] text-white rounded-lg text-xs font-bold transition shadow-sm">
-            Salvar Alterações
+            class="px-3 py-1.5 bg-[#3f62ad] hover:bg-[#2d4985] text-white rounded text-xs font-bold transition shadow-sm">
+            Salvar
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <script src="js/app.js?v=3.0"></script>
+  <script src="js/app.js?v=4.0"></script>
 </body>
 
 </html>

@@ -20,7 +20,7 @@ let plantaoEmEdicaoId = null;
 
 // Controle de Paginação
 let paginaAtual = 1;
-const plantoesPorPagina = 4;
+const plantoesPorPagina = 6;
 
 // Controle de Calendário
 let dataCalendarioView = new Date();
@@ -133,15 +133,15 @@ function converterParaMinutos(horaStr) {
     return parseInt(h) * 60 + parseInt(m);
 }
 
-function verificaChoqueHorario(data, horaInicio, horaFim, ignorarId = null, medico = null) {
+// VALIDAÇÃO DE CONFLITO E LIMITE (Máx 2 Comuns, Máx 1 Emergência no mesmo horário)
+function verificaLimiteEConflito(data, horaInicio, horaFim, tipo, ignorarId = null, medico = null) {
     const minInicio = converterParaMinutos(horaInicio);
     let minFim = converterParaMinutos(horaFim);
     if (minFim <= minInicio) minFim += 24 * 60;
 
-    return plantoesDaNuvem.some(plantao => {
+    const plantoesSobrepostos = plantoesDaNuvem.filter(plantao => {
         if (ignorarId && plantao.id === ignorarId) return false;
         if (plantao.data !== data) return false;
-        if (medico && plantao.medico !== medico) return false;
 
         const pInicio = converterParaMinutos(plantao.horaInicio);
         let pFim = converterParaMinutos(plantao.horaFim);
@@ -149,6 +149,25 @@ function verificaChoqueHorario(data, horaInicio, horaFim, ignorarId = null, medi
 
         return (minInicio < pFim && minFim > pInicio);
     });
+
+    if (medico) {
+        const mesmoMedico = plantoesSobrepostos.some(p => p.medico === medico);
+        if (mesmoMedico) {
+            return { conflito: true, motivo: 'Este médico já possui outro plantão agendado neste mesmo horário.' };
+        }
+    }
+
+    const mesmoTipoCount = plantoesSobrepostos.filter(p => (p.tipo || 'comum') === tipo).length;
+
+    if (tipo === 'emergencia' && mesmoTipoCount >= 1) {
+        return { conflito: true, motivo: 'Limite atingido: já existe 1 médico de Emergência escalado para este horário.' };
+    }
+
+    if (tipo === 'comum' && mesmoTipoCount >= 2) {
+        return { conflito: true, motivo: 'Limite atingido: já existem 2 médicos Comuns escalados para este horário.' };
+    }
+
+    return { conflito: false };
 }
 
 function formatarNomeMedicoCalendario(nomeCompleto) {
@@ -209,7 +228,7 @@ function formatarDatasPlantao(dataStr, horaInicio, horaFim) {
 
         return {
             inicio: dataInicioFormatada,
-            legendaTermino: `➔ Término no dia seguinte: ${diaFim}/${mesFim}/${ano.substring(2)} às ${horaFim}`
+            legendaTermino: `➔ Término em ${diaFim}/${mesFim} às ${horaFim}`
         };
     }
 
@@ -223,20 +242,22 @@ function criarPlantao() {
     const dataInput = document.getElementById('nova-data').value;
     const horaInicio = document.getElementById('hora-inicio').value;
     const horaFim = document.getElementById('hora-fim').value;
+    const tipoInput = document.getElementById('novo-tipo').value || 'comum';
     const medicoInput = document.getElementById('novo-medico').value;
 
     if (!dataInput || !horaInicio || !horaFim || !medicoInput) {
-        Swal.fire({ icon: 'warning', title: 'Campos Incompletos', text: 'Preencha a data, horário de início, fim e selecione o médico.' });
+        Swal.fire({ icon: 'warning', title: 'Campos Incompletos', text: 'Preencha todos os campos da escala.' });
         return;
     }
 
     if (isDataPassado(dataInput, horaInicio)) {
-        Swal.fire({ icon: 'error', title: 'Data Inválida', text: 'Não é possível cadastrar um plantão em uma data ou horário que já passou.' });
+        Swal.fire({ icon: 'error', title: 'Data Inválida', text: 'Não é possível cadastrar um plantão em uma data/horário passados.' });
         return;
     }
 
-    if (verificaChoqueHorario(dataInput, horaInicio, horaFim, null, medicoInput)) {
-        Swal.fire({ icon: 'error', title: 'Choque de Horários', text: 'Este médico já possui outro plantão agendado para este horário.' });
+    const checagem = verificaLimiteEConflito(dataInput, horaInicio, horaFim, tipoInput, null, medicoInput);
+    if (checagem.conflito) {
+        Swal.fire({ icon: 'error', title: 'Regra de Escala', text: checagem.motivo });
         return;
     }
 
@@ -247,6 +268,7 @@ function criarPlantao() {
         horaInicio: horaInicio,
         horaFim: horaFim,
         horario: horarioFormatado,
+        tipo: tipoInput,
         medico: medicoInput,
         solicitadoPor: usuarioAtualDados.nome,
         aprovadoAdmin: true,
@@ -273,6 +295,7 @@ function abrirModalEditar(id) {
 
     plantaoEmEdicaoId = id;
     document.getElementById('edit-data').value = plantao.data || '';
+    document.getElementById('edit-tipo').value = plantao.tipo || 'comum';
     
     if (plantao.horaInicio && plantao.horaFim) {
         document.getElementById('edit-hora-inicio').value = plantao.horaInicio;
@@ -310,6 +333,7 @@ function salvarEdicaoPlantao(event) {
     const novaData = document.getElementById('edit-data').value;
     const horaInicio = document.getElementById('edit-hora-inicio').value;
     const horaFim = document.getElementById('edit-hora-fim').value;
+    const novoTipo = document.getElementById('edit-tipo').value || 'comum';
     const novoMedico = document.getElementById('edit-medico').value;
 
     if (!novaData || !horaInicio || !horaFim || !novoMedico) {
@@ -318,12 +342,13 @@ function salvarEdicaoPlantao(event) {
     }
 
     if (isDataPassado(novaData, horaInicio)) {
-        Swal.fire({ icon: 'error', title: 'Data Inválida', text: 'Não é possível alterar um plantão para uma data ou horário que já passou.' });
+        Swal.fire({ icon: 'error', title: 'Data Inválida', text: 'Não é possível alterar um plantão para uma data passada.' });
         return;
     }
 
-    if (verificaChoqueHorario(novaData, horaInicio, horaFim, plantaoEmEdicaoId, novoMedico)) {
-        Swal.fire({ icon: 'error', title: 'Choque de Horários', text: 'Este médico já possui outro plantão agendado neste horário.' });
+    const checagem = verificaLimiteEConflito(novaData, horaInicio, horaFim, novoTipo, plantaoEmEdicaoId, novoMedico);
+    if (checagem.conflito) {
+        Swal.fire({ icon: 'error', title: 'Regra de Escala', text: checagem.motivo });
         return;
     }
 
@@ -356,6 +381,7 @@ function salvarEdicaoPlantao(event) {
         horaInicio: horaInicio,
         horaFim: horaFim,
         horario: horarioFormatado,
+        tipo: novoTipo,
         medico: novoMedico,
         medicoAnterior: plantaoAntigo.medico,
         solicitadoPor: usuarioAtualDados.nome,
@@ -368,7 +394,7 @@ function salvarEdicaoPlantao(event) {
 
     db.collection('plantoes').doc(plantaoEmEdicaoId).update(dadosAtualizados)
         .then(() => {
-            Swal.fire({ icon: 'success', title: 'Solicitação Enviada', text: 'A alteração foi gravada com sucesso.' });
+            Swal.fire({ icon: 'success', title: 'Atualizado', text: 'Alteração salva com sucesso.' });
             fecharModalEditar();
         })
         .catch(err => {
@@ -406,7 +432,7 @@ function aceitarPlantaoPeloMedico(id) {
 function aprovarPlantaoPeloAdmin(id) {
     Swal.fire({
         title: 'Aprovar Solicitação?',
-        text: 'Você confirmará esta escala ou alteração no sistema.',
+        text: 'Você confirmará esta escala no sistema.',
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#16a34a',
@@ -433,13 +459,13 @@ function aprovarPlantaoPeloAdmin(id) {
 function solicitarRemocaoPlantao(id) {
     Swal.fire({
         title: 'Solicitar Remoção?',
-        text: 'A exclusão do plantão exigirá a aprovação da outra parte.',
+        text: 'Exigirá a aprovação da outra parte para exclusão.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
         cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Sim, solicitar remoção',
-        cancelButtonText: 'Manter Plantão'
+        confirmButtonText: 'Sim, remover',
+        cancelButtonText: 'Manter'
     }).then((result) => {
         if (result.isConfirmed) {
             db.collection('plantoes').doc(id).update({
@@ -455,18 +481,18 @@ function solicitarRemocaoPlantao(id) {
 
 function aprovarRemocaoPlantao(id) {
     Swal.fire({
-        title: 'Confirmar Exclusão Definitiva?',
-        text: 'O plantão será permanentemente excluído.',
+        title: 'Excluir Definitivamente?',
+        text: 'O plantão será removido.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
         cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Sim, excluir definitivamente',
+        confirmButtonText: 'Excluir',
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
             db.collection('plantoes').doc(id).delete().then(() => {
-                Swal.fire('Excluído!', 'O plantão foi removido com sucesso.', 'success');
+                Swal.fire('Excluído!', 'Plantão removido com sucesso.', 'success');
             });
         }
     });
@@ -475,12 +501,12 @@ function aprovarRemocaoPlantao(id) {
 function rejeitarRemocaoPlantao(id) {
     Swal.fire({
         title: 'Manter Plantão?',
-        text: 'A solicitação de remoção será rejeitada e o plantão continuará ativo.',
+        text: 'Cancela o pedido de remoção.',
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#2563eb',
         cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Sim, manter plantão',
+        confirmButtonText: 'Manter',
         cancelButtonText: 'Voltar'
     }).then((result) => {
         if (result.isConfirmed) {
@@ -489,7 +515,7 @@ function rejeitarRemocaoPlantao(id) {
                 remocaoSolicitadaPor: firebase.firestore.FieldValue.delete(),
                 statusRemocao: firebase.firestore.FieldValue.delete()
             }).then(() => {
-                Swal.fire('Mantido!', 'A solicitação de remoção foi cancelada.', 'success');
+                Swal.fire('Mantido!', 'Pedido de remoção cancelado.', 'success');
             });
         }
     });
@@ -514,9 +540,11 @@ function mudarPagina(delta) {
     renderizarPlantoes();
 }
 
+// RENDERIZAÇÃO FILTRADA DOS CARDS (APENAS PENDÊNCIAS PARA ADMIN)
 function renderizarPlantoes() {
     const conteiner = document.getElementById('lista-plantoes');
     const contador = document.getElementById('contador-plantoes');
+    const tituloSecao = document.querySelector('#lista-plantoes')?.parentElement?.querySelector('h3');
     if (!conteiner || !contador) return;
 
     conteiner.innerHTML = ''; 
@@ -524,8 +552,21 @@ function renderizarPlantoes() {
     const nomeUsuario = usuarioAtualDados.nome.trim().toLowerCase();
     const eAdmin = usuarioAtualDados.papel === 'admin';
 
+    if (tituloSecao) {
+        tituloSecao.innerText = eAdmin ? 'Plantões Pendentes de Atenção' : 'Meus Plantões / Escala';
+    }
+
     let plantoesVisiveis = plantoesDaNuvem.filter(plantao => {
-        if (eAdmin) return true;
+        const apAdmin = plantao.aprovadoAdmin !== undefined ? plantao.aprovadoAdmin : (plantao.status === 'CONFIRMADO');
+        const apMedico = plantao.aprovadoMedico !== undefined ? plantao.aprovadoMedico : (plantao.status === 'CONFIRMADO');
+        const estaConfirmado = (plantao.status === 'CONFIRMADO' || (apAdmin && apMedico)) && !plantao.solicitouRemocao;
+
+        if (eAdmin) {
+            // Admin vê EXCLUSIVAMENTE plantões não-confirmados ou com remoção pendente
+            return !estaConfirmado;
+        }
+
+        // Médicos veem seus próprios plantões
         const eMedicoAtual = plantao.medico && plantao.medico.trim().toLowerCase() === nomeUsuario;
         const eMedicoAnterior = plantao.medicoAnterior && plantao.medicoAnterior.trim().toLowerCase() === nomeUsuario;
         const eSolicitante = plantao.solicitadoPor && plantao.solicitadoPor.trim().toLowerCase() === nomeUsuario;
@@ -533,10 +574,11 @@ function renderizarPlantoes() {
         return eMedicoAtual || eMedicoAnterior || eSolicitante;
     });
 
-    contador.innerText = `${plantoesVisiveis.length} plantão(ões)`;
+    contador.innerText = `${plantoesVisiveis.length} pendência(s)`;
 
     if (plantoesVisiveis.length === 0) {
-        conteiner.innerHTML = `<p class="text-gray-500 text-sm col-span-1 md:col-span-2 bg-white p-4 rounded-lg shadow-sm text-center">Nenhum plantão agendado para exibição.</p>`;
+        const msgVazia = eAdmin ? "Nenhum plantão pendente de aprovação ou remoção." : "Nenhum plantão agendado.";
+        conteiner.innerHTML = `<p class="text-gray-500 text-xs col-span-full bg-white p-3 rounded shadow-sm text-center">${msgVazia}</p>`;
         document.getElementById('paginacao-container').classList.add('hidden');
         return;
     }
@@ -549,7 +591,7 @@ function renderizarPlantoes() {
     const plantoesPagina = plantoesVisiveis.slice(inicio, inicio + plantoesPorPagina);
 
     document.getElementById('paginacao-container').classList.remove('hidden');
-    document.getElementById('info-paginacao').innerText = `Página ${paginaAtual} de ${totalPaginas}`;
+    document.getElementById('info-paginacao').innerText = `Pág. ${paginaAtual} de ${totalPaginas}`;
     document.getElementById('btn-pag-anterior').disabled = (paginaAtual === 1);
     document.getElementById('btn-pag-proxima').disabled = (paginaAtual === totalPaginas);
 
@@ -561,9 +603,13 @@ function renderizarPlantoes() {
 
         let corFundo = 'bg-white';
         let corBorda = 'border-gray-300';
-        let badge = '';
+        let badgeStatus = '';
         let botoesAcao = '';
         let infoAdicional = '';
+
+        const tipoPlantao = plantao.tipo === 'emergencia' ? 'EMERGÊNCIA' : 'COMUM';
+        const badgeTipoColor = plantao.tipo === 'emergencia' ? 'bg-red-100 text-red-800 border-red-300' : 'bg-blue-100 text-blue-800 border-blue-300';
+        const tagTipo = `<span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${badgeTipoColor}">${tipoPlantao}</span>`;
 
         const eMeuPlantaoAtual = plantao.medico && plantao.medico.trim().toLowerCase() === nomeUsuario;
         const euSoliciteiRemocao = plantao.remocaoSolicitadaPor && plantao.remocaoSolicitadaPor.trim().toLowerCase() === nomeUsuario;
@@ -571,114 +617,90 @@ function renderizarPlantoes() {
         if (remocaoPendente) {
             corFundo = 'bg-red-50';
             corBorda = 'border-red-500';
-            badge = '<span class="bg-red-200 text-red-900 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">⚠️ REMOÇÃO SOLICITADA</span>';
+            badgeStatus = '<span class="bg-red-200 text-red-900 text-[9px] font-bold px-1.5 py-0.5 rounded">⚠️ REMOÇÃO</span>';
 
-            if (euSoliciteiRemocao) {
-                botoesAcao = `
-                    <div class="mt-3 p-2 bg-red-100 rounded text-xs text-red-800 font-semibold text-center w-full">
-                        Você solicitou a exclusão. Aguardando a outra parte.
-                    </div>
-                `;
+            if (euSoliciteiRemocao && !eAdmin) {
+                botoesAcao = `<p class="text-[10px] text-red-800 font-semibold mt-1">Remoção solicitada por você.</p>`;
             } else {
                 botoesAcao = `
-                    <div class="mt-3 w-full">
-                        <p class="text-xs font-semibold text-red-700 mb-2"><strong>${plantao.remocaoSolicitadaPor}</strong> solicitou a remoção.</p>
-                        <div class="flex flex-col sm:flex-row gap-2 w-full">
-                            <button onclick="aprovarRemocaoPlantao('${plantao.id}')" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">🗑️ Aprovar Exclusão</button>
-                            <button onclick="rejeitarRemocaoPlantao('${plantao.id}')" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">Manter Plantão</button>
-                        </div>
+                    <div class="mt-2 flex gap-1 w-full">
+                        <button onclick="aprovarRemocaoPlantao('${plantao.id}')" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1 rounded text-[10px] font-bold transition">Aprovar Exclusão</button>
+                        <button onclick="rejeitarRemocaoPlantao('${plantao.id}')" class="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">Manter</button>
                     </div>
                 `;
             }
         } else if (estaConfirmado) {
-            corFundo = 'bg-green-50';
+            corFundo = 'bg-green-50/50';
             corBorda = 'border-green-500';
-            badge = '<span class="bg-green-200 text-green-800 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">CONFIRMADO</span>';
+            badgeStatus = '<span class="bg-green-200 text-green-800 text-[9px] font-bold px-1.5 py-0.5 rounded">CONFIRMADO</span>';
             
             if (eMeuPlantaoAtual || eAdmin) {
                 botoesAcao = `
-                    <div class="mt-3 flex flex-col sm:flex-row gap-2 w-full">
-                        <button onclick="abrirModalEditar('${plantao.id}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1">
-                            ✏️ Alterar / Repassar
+                    <div class="mt-2 flex gap-1 w-full">
+                        <button onclick="abrirModalEditar('${plantao.id}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-1 rounded text-[10px] font-bold transition">
+                            ✏️ Repassar/Editar
                         </button>
-                        <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1">
-                            🗑️ Solicitar Remoção
+                        <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">
+                            🗑️
                         </button>
                     </div>
                 `;
             }
         } else {
-            corFundo = 'bg-yellow-50';
-            corBorda = 'border-yellow-400';
+            corFundo = 'bg-amber-50/50';
+            corBorda = 'border-amber-400';
 
             if (plantao.medicoAnterior && plantao.medicoAnterior !== plantao.medico) {
-                infoAdicional = `<p class="text-xs text-purple-700 mt-1">🔄 Repasse: <strong>${plantao.medicoAnterior}</strong> ➔ <strong>${plantao.medico}</strong></p>`;
+                infoAdicional = `<p class="text-[10px] text-purple-700">Repasse: <strong>${plantao.medicoAnterior}</strong> ➔ <strong>${plantao.medico}</strong></p>`;
             }
 
             if (!apMedico && !apAdmin) {
-                if (eMeuPlantaoAtual) {
-                    badge = '<span class="bg-amber-200 text-amber-900 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">PENDENTE SEU ACEITE</span>';
+                if (eMeuPlantaoAtual && !eAdmin) {
+                    badgeStatus = '<span class="bg-amber-200 text-amber-900 text-[9px] font-bold px-1.5 py-0.5 rounded">ACEITE PENDENTE</span>';
                     botoesAcao = `
-                        <div class="mt-3 flex flex-col sm:flex-row gap-2 w-full">
-                            <button onclick="aceitarPlantaoPeloMedico('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✅ Aceitar</button>
-                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✏️ Repassar</button>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">🗑️</button>
+                        <div class="mt-2 flex gap-1 w-full">
+                            <button onclick="aceitarPlantaoPeloMedico('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-1 rounded text-[10px] font-bold transition">✅ Aceitar</button>
+                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[10px] font-bold transition">✏️</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">🗑️</button>
                         </div>
                     `;
                 } else if (eAdmin) {
-                    badge = '<span class="bg-purple-200 text-purple-900 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">PENDENTE ADMIN E MÉDICO</span>';
+                    badgeStatus = '<span class="bg-purple-200 text-purple-900 text-[9px] font-bold px-1.5 py-0.5 rounded">PENDENTE ADMIN/MÉDICO</span>';
                     botoesAcao = `
-                        <div class="mt-3 flex flex-col sm:flex-row gap-2 w-full">
-                            <button onclick="aprovarPlantaoPeloAdmin('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✅ Aprovar (Admin)</button>
-                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✏️ Editar</button>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">🗑️</button>
+                        <div class="mt-2 flex gap-1 w-full">
+                            <button onclick="aprovarPlantaoPeloAdmin('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-1 rounded text-[10px] font-bold transition">✅ Aprovar</button>
+                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[10px] font-bold transition">✏️</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">🗑️</button>
                         </div>
                     `;
                 } else {
-                    badge = '<span class="bg-yellow-200 text-yellow-800 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">AGUARDANDO APROVAÇÕES</span>';
-                    botoesAcao = `<p class="text-xs text-yellow-700 mt-3">Aguardando aceite do médico e aprovação do Administrador.</p>`;
+                    badgeStatus = '<span class="bg-amber-200 text-amber-800 text-[9px] font-bold px-1.5 py-0.5 rounded">PENDENTE</span>';
                 }
             } else if (!apMedico && apAdmin) {
                 if (eMeuPlantaoAtual) {
-                    badge = '<span class="bg-amber-200 text-amber-900 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">PENDENTE SEU ACEITE</span>';
+                    badgeStatus = '<span class="bg-amber-200 text-amber-900 text-[9px] font-bold px-1.5 py-0.5 rounded">ACEITE PENDENTE</span>';
                     botoesAcao = `
-                        <div class="mt-3 flex flex-col sm:flex-row gap-2 w-full">
-                            <button onclick="aceitarPlantaoPeloMedico('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✅ Aceitar Plantão</button>
-                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✏️ Repassar</button>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">🗑️</button>
-                        </div>
-                    `;
-                } else if (eAdmin) {
-                    badge = '<span class="bg-blue-200 text-blue-900 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">AGUARDANDO ACEITE DO MÉDICO</span>';
-                    botoesAcao = `
-                        <div class="mt-3 flex justify-between items-center w-full gap-2">
-                            <span class="text-xs text-blue-800">Aprovado por você. Aguardando ${plantao.medico}.</span>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1.5 rounded text-xs font-semibold transition whitespace-nowrap">Solicitar Remoção</button>
+                        <div class="mt-2 flex gap-1 w-full">
+                            <button onclick="aceitarPlantaoPeloMedico('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-1 rounded text-[10px] font-bold transition">✅ Aceitar</button>
+                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[10px] font-bold transition">✏️ Repassar</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">🗑️</button>
                         </div>
                     `;
                 } else {
-                    badge = '<span class="bg-yellow-200 text-yellow-800 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">EM ANDAMENTO</span>';
+                    badgeStatus = '<span class="bg-blue-200 text-blue-900 text-[9px] font-bold px-1.5 py-0.5 rounded">AGUARDANDO MÉDICO</span>';
                 }
             } else if (apMedico && !apAdmin) {
                 if (eAdmin) {
-                    badge = '<span class="bg-indigo-200 text-indigo-900 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">PENDENTE SUA APROVAÇÃO</span>';
+                    badgeStatus = '<span class="bg-indigo-200 text-indigo-900 text-[9px] font-bold px-1.5 py-0.5 rounded">APROVAÇÃO ADMIN</span>';
                     botoesAcao = `
-                        <div class="mt-3 flex flex-col sm:flex-row gap-2 w-full">
-                            <button onclick="aprovarPlantaoPeloAdmin('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✅ Aprovar Alteração</button>
-                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✏️ Editar</button>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">🗑️</button>
-                        </div>
-                    `;
-                } else if (eMeuPlantaoAtual || (plantao.solicitadoPor && plantao.solicitadoPor.trim().toLowerCase() === nomeUsuario)) {
-                    badge = '<span class="bg-yellow-200 text-yellow-800 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">AGUARDANDO ADMIN</span>';
-                    botoesAcao = `
-                        <div class="mt-3 flex justify-between items-center w-full gap-2">
-                            <p class="text-xs text-yellow-700">Aguardando aprovação do Administrador.</p>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1.5 rounded text-xs font-semibold transition whitespace-nowrap">Solicitar Remoção</button>
+                        <div class="mt-2 flex gap-1 w-full">
+                            <button onclick="aprovarPlantaoPeloAdmin('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-1 rounded text-[10px] font-bold transition">✅ Aprovar</button>
+                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[10px] font-bold transition">✏️</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">🗑️</button>
                         </div>
                     `;
                 } else {
-                    badge = '<span class="bg-yellow-200 text-yellow-800 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">EM ANDAMENTO</span>';
+                    badgeStatus = '<span class="bg-amber-200 text-amber-800 text-[9px] font-bold px-1.5 py-0.5 rounded">AGUARDANDO ADMIN</span>';
                 }
             }
         }
@@ -686,15 +708,18 @@ function renderizarPlantoes() {
         const datasInfo = formatarDatasPlantao(plantao.data, plantao.horaInicio, plantao.horaFim);
 
         const cardHTML = `
-            <div class="${corFundo} border-l-4 ${corBorda} p-3 md:p-4 rounded-lg shadow-sm flex flex-col justify-between w-full">
+            <div class="${corFundo} border-l-4 ${corBorda} p-2.5 rounded-md shadow-sm flex flex-col justify-between w-full border-y border-r border-gray-200">
                 <div>
-                    <div class="flex justify-between items-start gap-2 mb-1">
-                        <p class="text-xs text-gray-600 font-bold uppercase tracking-wider">📅 Início: ${datasInfo.inicio}</p>
-                        ${badge}
+                    <div class="flex justify-between items-center gap-1 mb-1">
+                        <span class="text-[10px] font-bold text-gray-600">📅 ${datasInfo.inicio}</span>
+                        <div class="flex items-center gap-1">
+                            ${tagTipo}
+                            ${badgeStatus}
+                        </div>
                     </div>
-                    ${datasInfo.legendaTermino ? `<p class="text-xs font-bold text-indigo-700 bg-indigo-50 p-1.5 rounded mb-2 border border-indigo-200">${datasInfo.legendaTermino}</p>` : ''}
-                    <p class="text-base md:text-lg font-bold text-gray-800 my-1">⏰ ${plantao.horario}</p>
-                    <p class="text-xs md:text-sm font-medium text-gray-700">👨‍⚕️ Responsável: <strong>${plantao.medico}</strong></p>
+                    ${datasInfo.legendaTermino ? `<p class="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded mb-1 border border-indigo-100">${datasInfo.legendaTermino}</p>` : ''}
+                    <p class="text-xs font-extrabold text-gray-800 my-0.5">⏰ ${plantao.horario}</p>
+                    <p class="text-xs text-gray-700">👨‍⚕️ <strong>${plantao.medico}</strong></p>
                     ${infoAdicional}
                 </div>
                 ${botoesAcao}
@@ -727,12 +752,10 @@ function renderizarCalendario() {
     const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
     const totalDiasMes = new Date(ano, mes + 1, 0).getDate();
 
-    // Espaços vazios do início do mês
     for (let i = 0; i < primeiroDiaSemana; i++) {
-        grid.innerHTML += `<div class="p-1 bg-gray-50 rounded border border-dashed border-gray-100 min-h-[50px] md:min-h-[75px]"></div>`;
+        grid.innerHTML += `<div class="p-1 bg-gray-50 rounded border border-dashed border-gray-100 min-h-[45px]"></div>`;
     }
 
-    // Renderização dos dias da grade
     for (let dia = 1; dia <= totalDiasMes; dia++) {
         const diaStr = String(dia).padStart(2, '0');
         const mesStr = String(mes + 1).padStart(2, '0');
@@ -747,31 +770,31 @@ function renderizarCalendario() {
             htmlPlantoes = plantoesNoDia.map(p => {
                 const isConfirmado = p.status === 'CONFIRMADO' || (p.aprovadoAdmin && p.aprovadoMedico);
                 const isRemocao = p.solicitouRemocao === true;
+                const isEmergencia = p.tipo === 'emergencia';
 
                 let corBadge = 'bg-amber-100 text-amber-900 border-amber-300';
                 if (isRemocao) {
                     corBadge = 'bg-red-100 text-red-900 border-red-300';
                 } else if (isConfirmado) {
-                    corBadge = 'bg-green-100 text-green-900 border-green-300';
+                    corBadge = isEmergencia ? 'bg-red-100 text-red-900 border-red-300 font-bold' : 'bg-green-100 text-green-900 border-green-300';
                 }
 
                 const nomeFormatado = formatarNomeMedicoCalendario(p.medico);
-                const horaInicioCurta = p.horaInicio ? p.horaInicio.substring(0, 5) : '';
+                const tagTipoAbrav = isEmergencia ? '[E]' : '[C]';
 
                 return `
-                    <div class="text-[8px] md:text-[10px] p-0.5 rounded border ${corBadge} font-semibold flex items-center justify-between leading-tight overflow-hidden pointer-events-none">
-                        <span class="truncate">${nomeFormatado}</span>
-                        <span class="text-[7px] md:text-[8px] opacity-80 font-mono hidden md:inline ml-1">${horaInicioCurta}</span>
+                    <div class="text-[7px] md:text-[9px] p-0.5 rounded border ${corBadge} flex items-center justify-between leading-tight overflow-hidden pointer-events-none">
+                        <span class="truncate">${tagTipoAbrav} ${nomeFormatado}</span>
                     </div>
                 `;
             }).join('');
         }
 
         grid.innerHTML += `
-            <button type="button" onclick="verDetalhesDia('${dataChave}')" class="w-full text-left p-1 border border-gray-200 rounded min-h-[50px] md:min-h-[75px] bg-white flex flex-col justify-start gap-0.5 cursor-pointer hover:border-indigo-400 active:bg-indigo-100 transition shadow-sm touch-manipulation focus:outline-none select-none">
+            <button type="button" onclick="verDetalhesDia('${dataChave}')" class="w-full text-left p-1 border border-gray-200 rounded min-h-[45px] md:min-h-[60px] bg-white flex flex-col justify-start gap-0.5 hover:border-indigo-400 active:bg-indigo-100 transition shadow-sm touch-manipulation focus:outline-none select-none">
                 <div class="flex justify-between items-center w-full pointer-events-none">
-                    <span class="font-bold text-[10px] md:text-xs ${plantoesNoDia.length > 0 ? 'text-indigo-600' : 'text-gray-700'}">${dia}</span>
-                    ${plantoesNoDia.length > 0 ? `<span class="text-[8px] bg-indigo-100 text-indigo-700 font-extrabold px-1 rounded-full md:hidden">${plantoesNoDia.length}</span>` : ''}
+                    <span class="font-bold text-[9px] md:text-xs ${plantoesNoDia.length > 0 ? 'text-indigo-600' : 'text-gray-700'}">${dia}</span>
+                    ${plantoesNoDia.length > 0 ? `<span class="text-[7px] bg-indigo-100 text-indigo-700 font-extrabold px-1 rounded-full md:hidden">${plantoesNoDia.length}</span>` : ''}
                 </div>
                 <div class="flex flex-col gap-0.5 overflow-hidden w-full pointer-events-none">
                     ${htmlPlantoes}
@@ -781,7 +804,7 @@ function renderizarCalendario() {
     }
 }
 
-// JANELA FLUTUANTE DE DETALHES DO DIA (OTIMIZADO PARA CELULAR)
+// MODAL DO CALENDÁRIO COM AÇÕES DE EDITAR/EXCLUIR
 function verDetalhesDia(dataChave) {
     const plantoesNoDia = plantoesDaNuvem.filter(p => p.data === dataChave);
     const [ano, mes, dia] = dataChave.split('-');
@@ -793,34 +816,56 @@ function verDetalhesDia(dataChave) {
             text: 'Nenhum plantão agendado para esta data.',
             icon: 'info',
             confirmButtonText: 'Fechar',
-            confirmButtonColor: '#4f46e5'
+            confirmButtonColor: '#3f62ad'
         });
         return;
     }
 
     plantoesNoDia.sort((a, b) => (a.horaInicio || '').localeCompare(b.horaInicio || ''));
 
+    const eAdmin = usuarioAtualDados && usuarioAtualDados.papel === 'admin';
+    const nomeUsuario = usuarioAtualDados ? usuarioAtualDados.nome.trim().toLowerCase() : '';
+
     let htmlConteudo = `<div class="flex flex-col gap-2 text-left max-h-[60vh] overflow-y-auto pr-1 mt-2">`;
 
     plantoesNoDia.forEach(p => {
         const isConfirmado = p.status === 'CONFIRMADO' || (p.aprovadoAdmin && p.aprovadoMedico);
         const isRemocao = p.solicitouRemocao === true;
+        const tipoStr = p.tipo === 'emergencia' ? '🚨 Emergência' : '🩺 Comum';
 
-        let statusBadge = '<span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded font-bold">PENDENTE</span>';
+        let statusBadge = '<span class="bg-amber-100 text-amber-800 text-[9px] px-1.5 py-0.5 rounded font-bold">PENDENTE</span>';
         if (isRemocao) {
-            statusBadge = '<span class="bg-red-100 text-red-800 text-[10px] px-2 py-0.5 rounded font-bold">REMOÇÃO</span>';
+            statusBadge = '<span class="bg-red-100 text-red-800 text-[9px] px-1.5 py-0.5 rounded font-bold">REMOÇÃO</span>';
         } else if (isConfirmado) {
-            statusBadge = '<span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded font-bold">CONFIRMADO</span>';
+            statusBadge = '<span class="bg-green-100 text-green-800 text-[9px] px-1.5 py-0.5 rounded font-bold">CONFIRMADO</span>';
+        }
+
+        const eMeuPlantao = p.medico && p.medico.trim().toLowerCase() === nomeUsuario;
+
+        let botoesModal = '';
+        if (eAdmin || eMeuPlantao) {
+            botoesModal = `
+                <div class="mt-2 pt-2 border-t border-gray-200 flex gap-1 justify-end">
+                    <button onclick="Swal.close(); abrirModalEditar('${p.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded text-[10px] font-bold transition flex items-center gap-1">
+                        ✏️ Editar / Repassar
+                    </button>
+                    <button onclick="Swal.close(); ${isRemocao ? `aprovarRemocaoPlantao('${p.id}')` : `solicitarRemocaoPlantao('${p.id}')`}" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition flex items-center gap-1">
+                        🗑️ Excluir
+                    </button>
+                </div>
+            `;
         }
 
         htmlConteudo += `
-            <div class="bg-gray-50 border border-gray-200 p-3 rounded-lg shadow-sm">
+            <div class="bg-gray-50 border border-gray-200 p-2.5 rounded shadow-sm">
                 <div class="flex justify-between items-center mb-1">
-                    <span class="font-bold text-gray-800 text-sm">👨‍⚕️ ${p.medico}</span>
+                    <span class="font-bold text-gray-800 text-xs">👨‍⚕️ ${p.medico}</span>
                     ${statusBadge}
                 </div>
-                <p class="text-xs text-gray-700 font-semibold my-1">⏰ Horário: <strong>${p.horario}</strong></p>
-                ${p.solicitadoPor ? `<p class="text-[10px] text-gray-500">Escalado por: ${p.solicitadoPor}</p>` : ''}
+                <p class="text-[11px] font-semibold text-indigo-900 mb-1">Tipo: ${tipoStr}</p>
+                <p class="text-xs text-gray-700 font-semibold my-0.5">⏰ Horário: <strong>${p.horario}</strong></p>
+                ${p.solicitadoPor ? `<p class="text-[9px] text-gray-500">Escalado por: ${p.solicitadoPor}</p>` : ''}
+                ${botoesModal}
             </div>
         `;
     });
@@ -831,7 +876,7 @@ function verDetalhesDia(dataChave) {
         title: `📅 Plantões do Dia ${dataFormatada}`,
         html: htmlConteudo,
         confirmButtonText: 'Fechar',
-        confirmButtonColor: '#4f46e5',
+        confirmButtonColor: '#3f62ad',
         customClass: {
             popup: 'rounded-xl',
         }
