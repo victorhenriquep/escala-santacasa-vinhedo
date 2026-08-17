@@ -202,11 +202,10 @@ function formatarDatasPlantao(dataStr, horaInicio, horaFim) {
         
         const diaFim = String(dataObj.getDate()).padStart(2, '0');
         const mesFim = String(dataObj.getMonth() + 1).padStart(2, '0');
-        const anoFim = dataObj.getFullYear();
 
         return {
             inicio: dataInicioFormatada,
-            legendaTermino: `➔ Término no dia seguinte: ${diaFim}/${mesFim}/${anoFim} às ${horaFim}`
+            legendaTermino: `➔ Término no dia seguinte: ${diaFim}/${mesFim}/${ano.substring(2)} às ${horaFim}`
         };
     }
 
@@ -253,7 +252,7 @@ function criarPlantao() {
         criadoEm: firebase.firestore.FieldValue.serverTimestamp()
     })
     .then(() => {
-        Swal.fire({ icon: 'success', title: 'Escalado!', text: 'Plantão cadastrado com sucesso! Aguardando aceite do médico.' });
+        Swal.fire({ icon: 'success', title: 'Escalado!', text: 'Plantão cadastrado com sucesso!' });
         document.getElementById('nova-data').value = '';
         document.getElementById('hora-inicio').value = '';
         document.getElementById('hora-fim').value = '';
@@ -365,7 +364,7 @@ function salvarEdicaoPlantao(event) {
 
     db.collection('plantoes').doc(plantaoEmEdicaoId).update(dadosAtualizados)
         .then(() => {
-            Swal.fire({ icon: 'success', title: 'Solicitação Enviada', text: 'A alteração foi gravada e aguarda as devidas aprovações.' });
+            Swal.fire({ icon: 'success', title: 'Solicitação Enviada', text: 'A alteração foi gravada com sucesso.' });
             fecharModalEditar();
         })
         .catch(err => {
@@ -444,7 +443,7 @@ function solicitarRemocaoPlantao(id) {
                 remocaoSolicitadaPor: usuarioAtualDados.nome,
                 statusRemocao: 'PENDENTE_REMOCAO'
             }).then(() => {
-                Swal.fire('Solicitado!', 'Solicitação de remoção registrada. Aguardando validação.', 'info');
+                Swal.fire('Solicitado!', 'Solicitação de remoção registrada.', 'info');
             });
         }
     });
@@ -725,10 +724,10 @@ function renderizarCalendario() {
 
     // Espaços vazios do início do mês
     for (let i = 0; i < primeiroDiaSemana; i++) {
-        grid.innerHTML += `<div class="p-0.5 bg-gray-50 rounded border border-dashed border-gray-100 min-h-[55px] md:min-h-[80px]"></div>`;
+        grid.innerHTML += `<div class="p-1 bg-gray-50 rounded border border-dashed border-gray-100 min-h-[50px] md:min-h-[75px]"></div>`;
     }
 
-    // Renderização dos dias
+    // Renderização dos dias da grade
     for (let dia = 1; dia <= totalDiasMes; dia++) {
         const diaStr = String(dia).padStart(2, '0');
         const mesStr = String(mes + 1).padStart(2, '0');
@@ -755,21 +754,82 @@ function renderizarCalendario() {
                 const horaInicioCurta = p.horaInicio ? p.horaInicio.substring(0, 5) : '';
 
                 return `
-                    <div class="text-[8px] md:text-[10px] p-0.5 md:p-1 rounded border ${corBadge} font-semibold flex flex-col md:flex-row md:items-center justify-between leading-tight" title="${p.medico} (${p.horario})">
+                    <div class="text-[8px] md:text-[10px] p-0.5 rounded border ${corBadge} font-semibold flex items-center justify-between leading-tight overflow-hidden">
                         <span class="truncate">${nomeFormatado}</span>
-                        <span class="text-[7px] md:text-[8px] opacity-80 font-mono">${horaInicioCurta}</span>
+                        <span class="text-[7px] md:text-[8px] opacity-80 font-mono hidden md:inline ml-1">${horaInicioCurta}</span>
                     </div>
                 `;
             }).join('');
         }
 
+        // Adicionada ação onclick para abrir modal no celular
         grid.innerHTML += `
-            <div class="p-0.5 md:p-1 border border-gray-200 rounded min-h-[55px] md:min-h-[80px] bg-white flex flex-col justify-start gap-0.5">
-                <span class="font-bold text-[10px] md:text-xs text-gray-700 leading-none mb-0.5">${dia}</span>
-                <div class="flex flex-col gap-0.5 overflow-y-auto max-h-[50px] md:max-h-[70px]">
+            <div onclick="verDetalhesDia('${dataChave}')" class="p-1 border border-gray-200 rounded min-h-[50px] md:min-h-[75px] bg-white flex flex-col justify-start gap-0.5 cursor-pointer hover:border-indigo-400 active:bg-indigo-50 transition shadow-sm">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-[10px] md:text-xs ${plantoesNoDia.length > 0 ? 'text-indigo-600' : 'text-gray-700'}">${dia}</span>
+                    ${plantoesNoDia.length > 0 ? `<span class="text-[8px] bg-indigo-100 text-indigo-700 font-extrabold px-1 rounded-full md:hidden">${plantoesNoDia.length}</span>` : ''}
+                </div>
+                <div class="flex flex-col gap-0.5 overflow-hidden">
                     ${htmlPlantoes}
                 </div>
             </div>
         `;
     }
+}
+
+// JANELA FLUTUANTE DE DETALHES DO DIA (OPTIMIZADO PARA CELULAR)
+function verDetalhesDia(dataChave) {
+    const plantoesNoDia = plantoesDaNuvem.filter(p => p.data === dataChave);
+    const [ano, mes, dia] = dataChave.split('-');
+    const dataFormatada = `${dia}/${mes}/${ano}`;
+
+    if (plantoesNoDia.length === 0) {
+        Swal.fire({
+            title: `📅 ${dataFormatada}`,
+            text: 'Nenhum plantão agendado para esta data.',
+            icon: 'info',
+            confirmButtonText: 'Fechar',
+            confirmButtonColor: '#4f46e5'
+        });
+        return;
+    }
+
+    plantoesNoDia.sort((a, b) => (a.horaInicio || '').localeCompare(b.horaInicio || ''));
+
+    let htmlConteudo = `<div class="flex flex-col gap-2 text-left max-h-[60vh] overflow-y-auto pr-1 mt-2">`;
+
+    plantoesNoDia.forEach(p => {
+        const isConfirmado = p.status === 'CONFIRMADO' || (p.aprovadoAdmin && p.aprovadoMedico);
+        const isRemocao = p.solicitouRemocao === true;
+
+        let statusBadge = '<span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded font-bold">PENDENTE</span>';
+        if (isRemocao) {
+            statusBadge = '<span class="bg-red-100 text-red-800 text-[10px] px-2 py-0.5 rounded font-bold">REMOÇÃO</span>';
+        } else if (isConfirmado) {
+            statusBadge = '<span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded font-bold">CONFIRMADO</span>';
+        }
+
+        htmlConteudo += `
+            <div class="bg-gray-50 border border-gray-200 p-3 rounded-lg shadow-sm">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="font-bold text-gray-800 text-sm">👨‍⚕️ ${p.medico}</span>
+                    ${statusBadge}
+                </div>
+                <p class="text-xs text-gray-700 font-semibold my-1">⏰ Horário: <strong>${p.horario}</strong></p>
+                ${p.solicitadoPor ? `<p class="text-[10px] text-gray-500">Escalado por: ${p.solicitadoPor}</p>` : ''}
+            </div>
+        `;
+    });
+
+    htmlConteudo += `</div>`;
+
+    Swal.fire({
+        title: `📅 Plantões do Dia ${dataFormatada}`,
+        html: htmlConteudo,
+        confirmButtonText: 'Fechar',
+        confirmButtonColor: '#4f46e5',
+        customClass: {
+            popup: 'rounded-xl',
+        }
+    });
 }

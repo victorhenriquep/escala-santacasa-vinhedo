@@ -37,7 +37,7 @@
 
   <main class="max-w-6xl mx-auto px-3 md:px-6">
 
-    <!-- SEÇÃO DE AUTENTICAÇÃO (LOGIN / CADASTRO) -->
+    <!-- SEÇÃO DE AUTENTICAÇÃO -->
     <section id="secao-auth" class="max-w-md mx-auto bg-white p-6 rounded-xl shadow-lg mt-8">
       <h2 id="titulo-auth" class="text-2xl font-bold text-center text-gray-800 mb-6">Acessar o Sistema</h2>
       
@@ -81,7 +81,7 @@
     <!-- SEÇÃO PRINCIPAL DA APLICAÇÃO -->
     <section id="secao-app" class="hidden flex flex-col gap-6">
 
-      <!-- PAINEL ADMINISTRATIVO (CADASTRAR PLANTÃO) -->
+      <!-- PAINEL ADMINISTRATIVO -->
       <div id="painel-admin" class="bg-white p-4 md:p-6 rounded-xl shadow-md border-t-4 border-indigo-600 hidden">
         <h3 class="font-bold text-base md:text-lg text-gray-800 mb-4">Escalar Novo Plantão</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -111,9 +111,9 @@
         </div>
       </div>
 
-      <!-- CALENDÁRIO -->
+      <!-- CALENDÁRIO INTERATIVO -->
       <div class="bg-white p-3 md:p-6 rounded-xl shadow-md w-full overflow-hidden">
-        <div class="flex justify-between items-center mb-4 gap-2">
+        <div class="flex justify-between items-center mb-3 gap-2">
           <button onclick="mudarMesCalendario(-1)" class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs md:text-sm font-bold transition">
             ◀ Anter.
           </button>
@@ -122,6 +122,8 @@
             Próx. ▶
           </button>
         </div>
+
+        <p class="text-[11px] text-gray-500 text-center mb-3 font-medium">💡 Toque em qualquer dia para ver os detalhes do plantão.</p>
 
         <div class="grid grid-cols-7 gap-1 text-center font-bold text-[10px] md:text-xs text-gray-500 mb-2">
           <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
@@ -194,7 +196,6 @@
     </div>
   </div>
 
-  <!-- SCRIPT JS PRINCIPAL COM PREVENÇÃO DE CACHE DE DISPOSITIVOS MÓVEIS -->
-  <script src="js/app.js?v=2.0"></script>
+  <script src="js/app.js?v=3.0"></script>
 </body>
 </html>
