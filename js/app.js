@@ -28,7 +28,10 @@ let dataCalendarioView = new Date();
 function alternarModoAuth() {
     modoCadastro = !modoCadastro;
     
-    document.getElementById('titulo-auth').innerText = modoCadastro ? 'Criar Conta' : 'Acessar o Sistema';
+    const elemTitulo = document.getElementById('titulo-auth');
+    if (elemTitulo) {
+        elemTitulo.innerText = modoCadastro ? 'Criar Conta' : 'Acessar o Sistema';
+    }
     document.getElementById('btn-submit-auth').innerText = modoCadastro ? 'Cadastrar' : 'Entrar';
     document.getElementById('texto-alternar').innerText = modoCadastro ? 'Já possui uma conta?' : 'Não tem uma conta?';
     document.getElementById('btn-alternar').innerText = modoCadastro ? 'Faça Login' : 'Cadastre-se';
@@ -130,7 +133,7 @@ function converterParaMinutos(horaStr) {
     return parseInt(h) * 60 + parseInt(m);
 }
 
-function verificaChoqueHorario(data, horaInicio, horaFim, ignorarId = null) {
+function verificaChoqueHorario(data, horaInicio, horaFim, ignorarId = null, medico = null) {
     const minInicio = converterParaMinutos(horaInicio);
     let minFim = converterParaMinutos(horaFim);
     if (minFim <= minInicio) minFim += 24 * 60;
@@ -138,6 +141,7 @@ function verificaChoqueHorario(data, horaInicio, horaFim, ignorarId = null) {
     return plantoesDaNuvem.some(plantao => {
         if (ignorarId && plantao.id === ignorarId) return false;
         if (plantao.data !== data) return false;
+        if (medico && plantao.medico !== medico) return false;
 
         const pInicio = converterParaMinutos(plantao.horaInicio);
         let pFim = converterParaMinutos(plantao.horaFim);
@@ -231,8 +235,8 @@ function criarPlantao() {
         return;
     }
 
-    if (verificaChoqueHorario(dataInput, horaInicio, horaFim)) {
-        Swal.fire({ icon: 'error', title: 'Choque de Horários', text: 'Já existe um plantão agendado para este horário.' });
+    if (verificaChoqueHorario(dataInput, horaInicio, horaFim, null, medicoInput)) {
+        Swal.fire({ icon: 'error', title: 'Choque de Horários', text: 'Este médico já possui outro plantão agendado para este horário.' });
         return;
     }
 
@@ -318,8 +322,8 @@ function salvarEdicaoPlantao(event) {
         return;
     }
 
-    if (verificaChoqueHorario(novaData, horaInicio, horaFim, plantaoEmEdicaoId)) {
-        Swal.fire({ icon: 'error', title: 'Choque de Horários', text: 'Já existe outro plantão agendado neste horário.' });
+    if (verificaChoqueHorario(novaData, horaInicio, horaFim, plantaoEmEdicaoId, novoMedico)) {
+        Swal.fire({ icon: 'error', title: 'Choque de Horários', text: 'Este médico já possui outro plantão agendado neste horário.' });
         return;
     }
 
@@ -702,6 +706,7 @@ function renderizarPlantoes() {
 }
 
 function mudarMesCalendario(delta) {
+    dataCalendarioView.setDate(1);
     dataCalendarioView.setMonth(dataCalendarioView.getMonth() + delta);
     renderizarCalendario();
 }
@@ -762,7 +767,6 @@ function renderizarCalendario() {
             }).join('');
         }
 
-        // Alterado para <button> interativo com captura de toque para mobile
         grid.innerHTML += `
             <button type="button" onclick="verDetalhesDia('${dataChave}')" class="w-full text-left p-1 border border-gray-200 rounded min-h-[50px] md:min-h-[75px] bg-white flex flex-col justify-start gap-0.5 cursor-pointer hover:border-indigo-400 active:bg-indigo-100 transition shadow-sm touch-manipulation focus:outline-none select-none">
                 <div class="flex justify-between items-center w-full pointer-events-none">
@@ -777,7 +781,7 @@ function renderizarCalendario() {
     }
 }
 
-// JANELA FLUTUANTE DE DETALHES DO DIA (OPTIMIZADO PARA CELULAR)
+// JANELA FLUTUANTE DE DETALHES DO DIA (OTIMIZADO PARA CELULAR)
 function verDetalhesDia(dataChave) {
     const plantoesNoDia = plantoesDaNuvem.filter(p => p.data === dataChave);
     const [ano, mes, dia] = dataChave.split('-');
