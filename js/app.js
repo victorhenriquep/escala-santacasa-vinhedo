@@ -233,7 +233,7 @@ function criarPlantao() {
     }
 
     if (verificaChoqueHorario(dataInput, horaInicio, horaFim)) {
-        Swal.fire({ icon: 'error', title: 'Choque de Horários', text: 'Já existe um plantão agendado para este horário. Apenas 1 médico por vez é permitido.' });
+        Swal.fire({ icon: 'error', title: 'Choque de Horários', text: 'Já existe um plantão agendado para este horário.' });
         return;
     }
 
@@ -320,7 +320,7 @@ function salvarEdicaoPlantao(event) {
     }
 
     if (verificaChoqueHorario(novaData, horaInicio, horaFim, plantaoEmEdicaoId)) {
-        Swal.fire({ icon: 'error', title: 'Choque de Horários', text: 'Já existe outro plantão agendado neste horário. Ajuste os horários antes de salvar.' });
+        Swal.fire({ icon: 'error', title: 'Choque de Horários', text: 'Já existe outro plantão agendado neste horário.' });
         return;
     }
 
@@ -430,7 +430,7 @@ function aprovarPlantaoPeloAdmin(id) {
 function solicitarRemocaoPlantao(id) {
     Swal.fire({
         title: 'Solicitar Remoção?',
-        text: 'A exclusão do plantão exigirá a aprovação da outra parte (Médico / Administrador).',
+        text: 'A exclusão do plantão exigirá a aprovação da outra parte.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
@@ -453,7 +453,7 @@ function solicitarRemocaoPlantao(id) {
 function aprovarRemocaoPlantao(id) {
     Swal.fire({
         title: 'Confirmar Exclusão Definitiva?',
-        text: 'A outra parte também aprovou. O plantão será permanentemente excluído.',
+        text: 'O plantão será permanentemente excluído.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
@@ -514,6 +514,8 @@ function mudarPagina(delta) {
 function renderizarPlantoes() {
     const conteiner = document.getElementById('lista-plantoes');
     const contador = document.getElementById('contador-plantoes');
+    if (!conteiner || !contador) return;
+
     conteiner.innerHTML = ''; 
 
     const nomeUsuario = usuarioAtualDados.nome.trim().toLowerCase();
@@ -531,7 +533,7 @@ function renderizarPlantoes() {
     contador.innerText = `${plantoesVisiveis.length} plantão(ões)`;
 
     if (plantoesVisiveis.length === 0) {
-        conteiner.innerHTML = `<p class="text-gray-500 text-sm col-span-2 bg-white p-4 rounded-lg shadow-sm text-center">Nenhum plantão agendado para exibição.</p>`;
+        conteiner.innerHTML = `<p class="text-gray-500 text-sm col-span-1 md:col-span-2 bg-white p-4 rounded-lg shadow-sm text-center">Nenhum plantão agendado para exibição.</p>`;
         document.getElementById('paginacao-container').classList.add('hidden');
         return;
     }
@@ -566,21 +568,21 @@ function renderizarPlantoes() {
         if (remocaoPendente) {
             corFundo = 'bg-red-50';
             corBorda = 'border-red-500';
-            badge = '<span class="bg-red-200 text-red-900 text-xs font-bold px-2 py-1 rounded">⚠️ REMOÇÃO SOLICITADA</span>';
+            badge = '<span class="bg-red-200 text-red-900 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">⚠️ REMOÇÃO SOLICITADA</span>';
 
             if (euSoliciteiRemocao) {
                 botoesAcao = `
-                    <div class="mt-3 p-2 bg-red-100 rounded text-xs text-red-800 font-semibold text-center">
-                        Você solicitou a exclusão. Aguardando validação da outra parte.
+                    <div class="mt-3 p-2 bg-red-100 rounded text-xs text-red-800 font-semibold text-center w-full">
+                        Você solicitou a exclusão. Aguardando a outra parte.
                     </div>
                 `;
             } else {
                 botoesAcao = `
-                    <div class="mt-3">
-                        <p class="text-xs font-semibold text-red-700 mb-2"><strong>${plantao.remocaoSolicitadaPor}</strong> solicitou a remoção deste plantão.</p>
-                        <div class="flex gap-2">
-                            <button onclick="aprovarRemocaoPlantao('${plantao.id}')" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition">🗑️ Aprovar Exclusão</button>
-                            <button onclick="rejeitarRemocaoPlantao('${plantao.id}')" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition">Manter Plantão</button>
+                    <div class="mt-3 w-full">
+                        <p class="text-xs font-semibold text-red-700 mb-2"><strong>${plantao.remocaoSolicitadaPor}</strong> solicitou a remoção.</p>
+                        <div class="flex flex-col sm:flex-row gap-2 w-full">
+                            <button onclick="aprovarRemocaoPlantao('${plantao.id}')" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">🗑️ Aprovar Exclusão</button>
+                            <button onclick="rejeitarRemocaoPlantao('${plantao.id}')" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">Manter Plantão</button>
                         </div>
                     </div>
                 `;
@@ -588,15 +590,15 @@ function renderizarPlantoes() {
         } else if (estaConfirmado) {
             corFundo = 'bg-green-50';
             corBorda = 'border-green-500';
-            badge = '<span class="bg-green-200 text-green-800 text-xs font-bold px-2 py-1 rounded">CONFIRMADO</span>';
+            badge = '<span class="bg-green-200 text-green-800 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">CONFIRMADO</span>';
             
             if (eMeuPlantaoAtual || eAdmin) {
                 botoesAcao = `
-                    <div class="mt-4 flex gap-2">
-                        <button onclick="abrirModalEditar('${plantao.id}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition flex items-center justify-center gap-1">
+                    <div class="mt-3 flex flex-col sm:flex-row gap-2 w-full">
+                        <button onclick="abrirModalEditar('${plantao.id}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1">
                             ✏️ Alterar / Repassar
                         </button>
-                        <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition flex items-center justify-center gap-1">
+                        <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1">
                             🗑️ Solicitar Remoção
                         </button>
                     </div>
@@ -612,68 +614,68 @@ function renderizarPlantoes() {
 
             if (!apMedico && !apAdmin) {
                 if (eMeuPlantaoAtual) {
-                    badge = '<span class="bg-amber-200 text-amber-900 text-xs font-bold px-2 py-1 rounded">PENDENTE SEU ACEITE</span>';
+                    badge = '<span class="bg-amber-200 text-amber-900 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">PENDENTE SEU ACEITE</span>';
                     botoesAcao = `
-                        <div class="mt-3 flex gap-2">
-                            <button onclick="aceitarPlantaoPeloMedico('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition">✅ Aceitar</button>
-                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition">✏️ Editar</button>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-xs font-semibold transition">🗑️</button>
+                        <div class="mt-3 flex flex-col sm:flex-row gap-2 w-full">
+                            <button onclick="aceitarPlantaoPeloMedico('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✅ Aceitar</button>
+                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✏️ Repassar</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">🗑️</button>
                         </div>
                     `;
                 } else if (eAdmin) {
-                    badge = '<span class="bg-purple-200 text-purple-900 text-xs font-bold px-2 py-1 rounded">PENDENTE ADMIN E MÉDICO</span>';
+                    badge = '<span class="bg-purple-200 text-purple-900 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">PENDENTE ADMIN E MÉDICO</span>';
                     botoesAcao = `
-                        <div class="mt-3 flex gap-2">
-                            <button onclick="aprovarPlantaoPeloAdmin('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition">✅ Aprovar (Admin)</button>
-                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition">✏️ Editar</button>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-xs font-semibold transition">🗑️</button>
+                        <div class="mt-3 flex flex-col sm:flex-row gap-2 w-full">
+                            <button onclick="aprovarPlantaoPeloAdmin('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✅ Aprovar (Admin)</button>
+                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✏️ Editar</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">🗑️</button>
                         </div>
                     `;
                 } else {
-                    badge = '<span class="bg-yellow-200 text-yellow-800 text-xs font-bold px-2 py-1 rounded">AGUARDANDO APROVAÇÕES</span>';
+                    badge = '<span class="bg-yellow-200 text-yellow-800 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">AGUARDANDO APROVAÇÕES</span>';
                     botoesAcao = `<p class="text-xs text-yellow-700 mt-3">Aguardando aceite do médico e aprovação do Administrador.</p>`;
                 }
             } else if (!apMedico && apAdmin) {
                 if (eMeuPlantaoAtual) {
-                    badge = '<span class="bg-amber-200 text-amber-900 text-xs font-bold px-2 py-1 rounded">PENDENTE SEU ACEITE</span>';
+                    badge = '<span class="bg-amber-200 text-amber-900 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">PENDENTE SEU ACEITE</span>';
                     botoesAcao = `
-                        <div class="mt-3 flex gap-2">
-                            <button onclick="aceitarPlantaoPeloMedico('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition">✅ Aceitar Plantão</button>
-                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition">✏️ Repassar</button>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-xs font-semibold transition">🗑️</button>
+                        <div class="mt-3 flex flex-col sm:flex-row gap-2 w-full">
+                            <button onclick="aceitarPlantaoPeloMedico('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✅ Aceitar Plantão</button>
+                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✏️ Repassar</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">🗑️</button>
                         </div>
                     `;
                 } else if (eAdmin) {
-                    badge = '<span class="bg-blue-200 text-blue-900 text-xs font-bold px-2 py-1 rounded">AGUARDANDO ACEITE DO MÉDICO</span>';
+                    badge = '<span class="bg-blue-200 text-blue-900 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">AGUARDANDO ACEITE DO MÉDICO</span>';
                     botoesAcao = `
-                        <div class="mt-3 flex gap-2 justify-between items-center">
+                        <div class="mt-3 flex justify-between items-center w-full gap-2">
                             <span class="text-xs text-blue-800">Aprovado por você. Aguardando ${plantao.medico}.</span>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded text-xs font-semibold transition">Solicitar Remoção</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1.5 rounded text-xs font-semibold transition whitespace-nowrap">Solicitar Remoção</button>
                         </div>
                     `;
                 } else {
-                    badge = '<span class="bg-yellow-200 text-yellow-800 text-xs font-bold px-2 py-1 rounded">EM ANDAMENTO</span>';
+                    badge = '<span class="bg-yellow-200 text-yellow-800 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">EM ANDAMENTO</span>';
                 }
             } else if (apMedico && !apAdmin) {
                 if (eAdmin) {
-                    badge = '<span class="bg-indigo-200 text-indigo-900 text-xs font-bold px-2 py-1 rounded">PENDENTE SUA APROVAÇÃO</span>';
+                    badge = '<span class="bg-indigo-200 text-indigo-900 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">PENDENTE SUA APROVAÇÃO</span>';
                     botoesAcao = `
-                        <div class="mt-3 flex gap-2">
-                            <button onclick="aprovarPlantaoPeloAdmin('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition">✅ Aprovar Alteração</button>
-                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition">✏️ Editar</button>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded text-xs font-semibold transition">🗑️</button>
+                        <div class="mt-3 flex flex-col sm:flex-row gap-2 w-full">
+                            <button onclick="aprovarPlantaoPeloAdmin('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✅ Aprovar Alteração</button>
+                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">✏️ Editar</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">🗑️</button>
                         </div>
                     `;
                 } else if (eMeuPlantaoAtual || (plantao.solicitadoPor && plantao.solicitadoPor.trim().toLowerCase() === nomeUsuario)) {
-                    badge = '<span class="bg-yellow-200 text-yellow-800 text-xs font-bold px-2 py-1 rounded">AGUARDANDO ADMIN</span>';
+                    badge = '<span class="bg-yellow-200 text-yellow-800 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">AGUARDANDO ADMIN</span>';
                     botoesAcao = `
-                        <div class="mt-3 flex justify-between items-center">
+                        <div class="mt-3 flex justify-between items-center w-full gap-2">
                             <p class="text-xs text-yellow-700">Aguardando aprovação do Administrador.</p>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded text-xs font-semibold transition">Solicitar Remoção</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1.5 rounded text-xs font-semibold transition whitespace-nowrap">Solicitar Remoção</button>
                         </div>
                     `;
                 } else {
-                    badge = '<span class="bg-yellow-200 text-yellow-800 text-xs font-bold px-2 py-1 rounded">EM ANDAMENTO</span>';
+                    badge = '<span class="bg-yellow-200 text-yellow-800 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded">EM ANDAMENTO</span>';
                 }
             }
         }
@@ -681,15 +683,15 @@ function renderizarPlantoes() {
         const datasInfo = formatarDatasPlantao(plantao.data, plantao.horaInicio, plantao.horaFim);
 
         const cardHTML = `
-            <div class="${corFundo} border-l-4 ${corBorda} p-4 rounded-lg shadow-sm flex flex-col justify-between">
+            <div class="${corFundo} border-l-4 ${corBorda} p-3 md:p-4 rounded-lg shadow-sm flex flex-col justify-between w-full">
                 <div>
                     <div class="flex justify-between items-start gap-2 mb-1">
                         <p class="text-xs text-gray-600 font-bold uppercase tracking-wider">📅 Início: ${datasInfo.inicio}</p>
                         ${badge}
                     </div>
                     ${datasInfo.legendaTermino ? `<p class="text-xs font-bold text-indigo-700 bg-indigo-50 p-1.5 rounded mb-2 border border-indigo-200">${datasInfo.legendaTermino}</p>` : ''}
-                    <p class="text-lg font-bold text-gray-800 my-1">⏰ ${plantao.horario}</p>
-                    <p class="text-sm font-medium text-gray-700">👨‍⚕️ Responsável: <strong>${plantao.medico}</strong></p>
+                    <p class="text-base md:text-lg font-bold text-gray-800 my-1">⏰ ${plantao.horario}</p>
+                    <p class="text-xs md:text-sm font-medium text-gray-700">👨‍⚕️ Responsável: <strong>${plantao.medico}</strong></p>
                     ${infoAdicional}
                 </div>
                 ${botoesAcao}
@@ -705,7 +707,6 @@ function mudarMesCalendario(delta) {
     renderizarCalendario();
 }
 
-// CALENDÁRIO COM SUPORTE A MÚLTIPLOS PLANTÕES NO MESMO DIA
 function renderizarCalendario() {
     const grid = document.getElementById('grid-calendario');
     const tituloMes = document.getElementById('titulo-mes-calendario');
@@ -722,23 +723,21 @@ function renderizarCalendario() {
     const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
     const totalDiasMes = new Date(ano, mes + 1, 0).getDate();
 
-    // Espaços em branco antes do primeiro dia
+    // Espaços vazios do início do mês
     for (let i = 0; i < primeiroDiaSemana; i++) {
-        grid.innerHTML += `<div class="p-1 bg-gray-50/50 rounded border border-dashed border-gray-200 min-h-[85px]"></div>`;
+        grid.innerHTML += `<div class="p-0.5 bg-gray-50 rounded border border-dashed border-gray-100 min-h-[55px] md:min-h-[80px]"></div>`;
     }
 
-    // Renderiza cada dia
+    // Renderização dos dias
     for (let dia = 1; dia <= totalDiasMes; dia++) {
         const diaStr = String(dia).padStart(2, '0');
         const mesStr = String(mes + 1).padStart(2, '0');
         const dataChave = `${ano}-${mesStr}-${diaStr}`;
 
         const plantoesNoDia = plantoesDaNuvem.filter(p => p.data === dataChave);
-
         let htmlPlantoes = '';
 
         if (plantoesNoDia.length > 0) {
-            // Ordena plantões do dia pelo horário de início
             plantoesNoDia.sort((a, b) => (a.horaInicio || '').localeCompare(b.horaInicio || ''));
 
             htmlPlantoes = plantoesNoDia.map(p => {
@@ -753,23 +752,21 @@ function renderizarCalendario() {
                 }
 
                 const nomeFormatado = formatarNomeMedicoCalendario(p.medico);
-                const horaInicioCurta = p.horaInicio ? `${p.horaInicio.substring(0, 5)}` : '';
+                const horaInicioCurta = p.horaInicio ? p.horaInicio.substring(0, 5) : '';
 
                 return `
-                    <div class="text-[9px] px-1 py-0.5 rounded border ${corBadge} font-semibold flex items-center justify-between gap-1" title="${p.medico} (${p.horario})">
+                    <div class="text-[8px] md:text-[10px] p-0.5 md:p-1 rounded border ${corBadge} font-semibold flex flex-col md:flex-row md:items-center justify-between leading-tight" title="${p.medico} (${p.horario})">
                         <span class="truncate">${nomeFormatado}</span>
-                        <span class="text-[8px] opacity-75 font-mono whitespace-nowrap">${horaInicioCurta}</span>
+                        <span class="text-[7px] md:text-[8px] opacity-80 font-mono">${horaInicioCurta}</span>
                     </div>
                 `;
             }).join('');
-        } else {
-            htmlPlantoes = `<div class="text-[9px] text-gray-400 mt-auto text-center">Vazio</div>`;
         }
 
         grid.innerHTML += `
-            <div class="p-1 border border-gray-200 rounded min-h-[85px] bg-white flex flex-col justify-start gap-1">
-                <span class="font-bold text-xs text-gray-700">${dia}</span>
-                <div class="flex flex-col gap-1 overflow-y-auto max-h-[75px]">
+            <div class="p-0.5 md:p-1 border border-gray-200 rounded min-h-[55px] md:min-h-[80px] bg-white flex flex-col justify-start gap-0.5">
+                <span class="font-bold text-[10px] md:text-xs text-gray-700 leading-none mb-0.5">${dia}</span>
+                <div class="flex flex-col gap-0.5 overflow-y-auto max-h-[50px] md:max-h-[70px]">
                     ${htmlPlantoes}
                 </div>
             </div>

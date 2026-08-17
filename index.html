@@ -1,238 +1,200 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Santa Casa de Vinhedo - Escalas Médicas</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SweetAlert2 para alertas e confirmações modernas -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escala Médica - Santa Casa de Vinhedo</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Firebase Compat Libraries -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-gray-100 font-sans p-4 md:p-6">
+<body class="bg-gray-100 min-h-screen text-gray-800 antialiased font-sans pb-10">
 
-    <div class="max-w-4xl mx-auto">
-        
-        <!-- TELA DE LOGIN E CADASTRO -->
-        <div id="secao-auth" class="bg-white p-6 rounded-xl shadow-md max-w-md mx-auto my-12 border-t-4 border-blue-700">
-            <div class="text-center mb-6">
-                <span class="text-3xl">🏥</span>
-                <h1 class="text-xl font-bold text-gray-800 mt-2">Santa Casa de Vinhedo</h1>
-                <p class="text-xs text-gray-500">Portal de Gestão de Escalas Médicas</p>
-            </div>
-            
-            <h2 id="titulo-auth" class="text-lg font-semibold text-gray-700 mb-4 text-center">Acessar o Sistema</h2>
-            
-            <form id="form-auth" onsubmit="manipularAuth(event)" class="space-y-4">
-                <div id="campo-nome" class="hidden">
-                    <label class="block text-sm font-semibold text-gray-700">Nome Completo</label>
-                    <input type="text" id="auth-nome" class="w-full p-2 border rounded focus:outline-blue-500" placeholder="Ex: Dra. Bárbara">
-                </div>
-
-                <div id="campo-papel" class="hidden">
-                    <label class="block text-sm font-semibold text-gray-700">Tipo de Conta</label>
-                    <select id="auth-papel" class="w-full p-2 border rounded focus:outline-blue-500">
-                        <option value="medico">Médico(a)</option>
-                        <option value="admin">Administrador(a)</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700">E-mail</label>
-                    <input type="email" id="auth-email" required class="w-full p-2 border rounded focus:outline-blue-500" placeholder="seu@email.com">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700">Senha</label>
-                    <input type="password" id="auth-senha" required class="w-full p-2 border rounded focus:outline-blue-500" placeholder="******">
-                </div>
-
-                <button type="submit" id="btn-submit-auth" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 rounded transition">
-                    Entrar
-                </button>
-            </form>
-
-            <div class="mt-4 text-center text-sm text-gray-600">
-                <span id="texto-alternar">Não tem uma conta?</span>
-                <button type="button" onclick="alternarModoAuth()" id="btn-alternar" class="text-blue-700 font-semibold underline ml-1">
-                    Cadastre-se
-                </button>
-            </div>
+  <!-- CABEÇALHO -->
+  <header class="bg-indigo-700 text-white shadow-md mb-6">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+      <div>
+        <h1 class="text-xl md:text-2xl font-bold">Santa Casa de Vinhedo</h1>
+        <p class="text-xs text-indigo-200">Gestão e Escala de Plantões Médicos</p>
+      </div>
+      <div id="info-usuario" class="flex items-center gap-3 text-right">
+        <div>
+          <p id="nome-usuario-logado" class="font-bold text-sm"></p>
+          <p id="papel-usuario-logado" class="text-xs text-indigo-200"></p>
         </div>
-
-        <!-- SISTEMA PRINCIPAL -->
-        <div id="secao-app" class="hidden">
-            <!-- Cabeçalho Principal -->
-            <header class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm mb-6 border-l-4 border-blue-700">
-                <div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-2xl">🏥</span>
-                        <h1 class="text-xl font-bold text-gray-800">Santa Casa de Vinhedo</h1>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">
-                        Usuário: <span id="nome-usuario-logado" class="font-bold text-blue-700">-</span> 
-                        (<span id="papel-usuario-logado" class="capitalize">-</span>)
-                    </p>
-                </div>
-                <button onclick="fazerLogout()" class="bg-gray-200 hover:bg-red-500 hover:text-white text-gray-700 text-xs font-semibold px-3 py-2 rounded transition">
-                    🚪 Sair
-                </button>
-            </header>
-
-            <!-- PAINEL DA ADMINISTRADORA -->
-            <div id="painel-admin" class="hidden mb-8 bg-white p-5 rounded-xl shadow-sm border-t-4 border-indigo-600">
-                <h2 class="text-md font-bold text-indigo-800 mb-4 flex items-center gap-2">
-                    <span>➕</span> Escalar Novo Plantão
-                </h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Data</label>
-                        <input type="date" id="nova-data" class="w-full p-2 text-sm border rounded">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Hora de Início</label>
-                        <input type="time" id="hora-inicio" class="w-full p-2 text-sm border rounded">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Hora de Fim</label>
-                        <input type="time" id="hora-fim" class="w-full p-2 text-sm border rounded">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Médico(a) Responsável</label>
-                        <select id="novo-medico" class="w-full p-2 text-sm border rounded">
-                            <option value="">Carregando médicos...</option>
-                        </select>
-                    </div>
-                </div>
-                <button onclick="criarPlantao()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-semibold text-sm transition w-full md:w-auto">
-                    Confirmar Escala
-                </button>
-            </div>
-
-            <!-- Área dos Plantões -->
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-bold text-gray-800">Meus Plantões / Escalas</h2>
-                <span id="contador-plantoes" class="text-xs bg-blue-100 text-blue-800 font-semibold px-2.5 py-1 rounded-full">0 plantões</span>
-            </div>
-            
-            <div id="lista-plantoes" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Cards gerados pelo JS -->
-            </div>
-
-            <!-- Controles de Paginação -->
-            <div id="paginacao-container" class="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm mt-4 text-xs">
-                <button id="btn-pag-anterior" onclick="mudarPagina(-1)" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded font-semibold text-gray-700 disabled:opacity-50">
-                    &larr; Anterior
-                </button>
-                <span id="info-paginacao" class="font-semibold text-gray-600">Página 1 de 1</span>
-                <button id="btn-pag-proxima" onclick="mudarPagina(1)" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded font-semibold text-gray-700 disabled:opacity-50">
-                    Próxima &rarr;
-                </button>
-            </div>
-
-            <!-- VISUALIZAÇÃO GERAL EM CALENDÁRIO -->
-            <div class="mt-8 bg-white p-5 rounded-xl shadow-sm border-t-4 border-blue-600">
-                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
-                    <h2 class="text-md font-bold text-gray-800 flex items-center gap-2">
-                        <span>📅</span> Calendário Geral de Escalas
-                    </h2>
-                    <div class="flex items-center gap-2">
-                        <button onclick="mudarMesCalendario(-1)" class="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded text-xs">&larr; Mês Anterior</button>
-                        <span id="titulo-mes-calendario" class="text-sm font-bold text-blue-800 min-w-[120px] text-center">-</span>
-                        <button onclick="mudarMesCalendario(1)" class="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded text-xs">Próximo Mês &rarr;</button>
-                    </div>
-                </div>
-
-                <!-- Legenda do Calendário -->
-                <div class="flex flex-wrap gap-4 text-xs mb-4 p-2.5 bg-gray-50 rounded border">
-                    <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
-                        <span class="text-gray-700">Confirmado</span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
-                        <span class="text-gray-700">Ativo / Pendente</span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
-                        <span class="text-gray-700">Pendente de Remoção</span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded-full bg-gray-300 inline-block"></span>
-                        <span class="text-gray-700">Sem escala / Vazio</span>
-                    </div>
-                </div>
-
-                <!-- Grid do Calendário -->
-                <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-gray-600 mb-2">
-                    <div class="p-1">Dom</div><div class="p-1">Seg</div><div class="p-1">Ter</div>
-                    <div class="p-1">Qua</div><div class="p-1">Qui</div><div class="p-1">Sex</div><div class="p-1">Sáb</div>
-                </div>
-                <div id="grid-calendario" class="grid grid-cols-7 gap-1 text-xs">
-                    <!-- Dias gerados via JS -->
-                </div>
-            </div>
-
-        </div>
-
+        <button onclick="fazerLogout()" class="bg-indigo-800 hover:bg-indigo-900 text-white text-xs px-3 py-2 rounded-lg font-semibold transition">
+          Sair
+        </button>
+      </div>
     </div>
+  </header>
 
-    <!-- MODAL DE EDIÇÃO / REPASSE DE PLANTÃO -->
-    <div id="modal-editar" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 border-t-4 border-indigo-600">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    <span>✏️</span> Alterar / Repassar Plantão
-                </h3>
-                <button onclick="fecharModalEditar()" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
-            </div>
+  <main class="max-w-6xl mx-auto px-3 md:px-6">
 
-            <form id="form-editar" onsubmit="salvarEdicaoPlantao(event)" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Data do Plantão</label>
-                    <input type="date" id="edit-data" required class="w-full p-2 text-sm border rounded">
-                </div>
-
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Hora Início</label>
-                        <input type="time" id="edit-hora-inicio" required class="w-full p-2 text-sm border rounded">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Hora Fim</label>
-                        <input type="time" id="edit-hora-fim" required class="w-full p-2 text-sm border rounded">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Médico(a) Responsável (ou Repassar para)</label>
-                    <select id="edit-medico" required class="w-full p-2 text-sm border rounded">
-                        <!-- Opções carregadas via JS -->
-                    </select>
-                </div>
-
-                <div class="p-3 bg-blue-50 border-l-4 border-blue-500 rounded text-xs text-blue-800">
-                    💡 <strong>Nota:</strong> Alterações de data, horário ou repasse para outro médico entrarão em pendência até serem aprovadas pelo Médico e pelo Administrador.
-                </div>
-
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="fecharModalEditar()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-sm font-semibold transition">
-                        Cancelar
-                    </button>
-                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-semibold transition">
-                        Solicitar Alteração
-                    </button>
-                </div>
-            </form>
+    <!-- SEÇÃO DE AUTENTICAÇÃO (LOGIN / CADASTRO) -->
+    <section id="secao-auth" class="max-w-md mx-auto bg-white p-6 rounded-xl shadow-lg mt-8">
+      <h2 id="titulo-auth" class="text-2xl font-bold text-center text-gray-800 mb-6">Acessar o Sistema</h2>
+      
+      <form onsubmit="manipularAuth(event)" class="flex flex-col gap-4">
+        <div id="campo-nome" class="hidden flex flex-col gap-1">
+          <label class="text-xs font-bold text-gray-700">Nome Completo</label>
+          <input type="text" id="auth-nome" placeholder="Ex: Dr. Carlos Silva" class="border p-2.5 rounded-lg text-sm w-full border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none">
         </div>
+
+        <div id="campo-papel" class="hidden flex flex-col gap-1">
+          <label class="text-xs font-bold text-gray-700">Função</label>
+          <select id="auth-papel" class="border p-2.5 rounded-lg text-sm w-full border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+            <option value="medico">Médico(a)</option>
+            <option value="admin">Administrador(a)</option>
+          </select>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold text-gray-700">E-mail</label>
+          <input type="email" id="auth-email" required placeholder="seu@email.com" class="border p-2.5 rounded-lg text-sm w-full border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold text-gray-700">Senha</label>
+          <input type="password" id="auth-senha" required placeholder="••••••••" class="border p-2.5 rounded-lg text-sm w-full border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+
+        <button type="submit" id="btn-submit-auth" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition mt-2">
+          Entrar
+        </button>
+      </form>
+
+      <div class="text-center mt-4 pt-4 border-t border-gray-100">
+        <span id="texto-alternar" class="text-xs text-gray-600">Não tem uma conta?</span>
+        <button onclick="alternarModoAuth()" id="btn-alternar" class="text-xs font-bold text-indigo-600 hover:underline ml-1">
+          Cadastre-se
+        </button>
+      </div>
+    </section>
+
+    <!-- SEÇÃO PRINCIPAL DA APLICAÇÃO -->
+    <section id="secao-app" class="hidden flex flex-col gap-6">
+
+      <!-- PAINEL ADMINISTRATIVO (CADASTRAR PLANTÃO) -->
+      <div id="painel-admin" class="bg-white p-4 md:p-6 rounded-xl shadow-md border-t-4 border-indigo-600 hidden">
+        <h3 class="font-bold text-base md:text-lg text-gray-800 mb-4">Escalar Novo Plantão</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div>
+            <label class="text-xs font-bold text-gray-600 block mb-1">Data</label>
+            <input type="date" id="nova-data" class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-600 block mb-1">Hora Início</label>
+            <input type="time" id="hora-inicio" class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-600 block mb-1">Hora Fim</label>
+            <input type="time" id="hora-fim" class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-600 block mb-1">Médico(a)</label>
+            <select id="novo-medico" class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-indigo-500 bg-white">
+              <option value="">Carregando médicos...</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button onclick="criarPlantao()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition">
+              + Escalar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CALENDÁRIO -->
+      <div class="bg-white p-3 md:p-6 rounded-xl shadow-md w-full overflow-hidden">
+        <div class="flex justify-between items-center mb-4 gap-2">
+          <button onclick="mudarMesCalendario(-1)" class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs md:text-sm font-bold transition">
+            ◀ Anter.
+          </button>
+          <h3 id="titulo-mes-calendario" class="font-extrabold text-sm md:text-lg text-gray-800 text-center"></h3>
+          <button onclick="mudarMesCalendario(1)" class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs md:text-sm font-bold transition">
+            Próx. ▶
+          </button>
+        </div>
+
+        <div class="grid grid-cols-7 gap-1 text-center font-bold text-[10px] md:text-xs text-gray-500 mb-2">
+          <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+        </div>
+
+        <div id="grid-calendario" class="grid grid-cols-7 gap-1 w-full">
+          <!-- Renderizado dinamicamente via JS -->
+        </div>
+      </div>
+
+      <!-- LISTA DE PLANTÕES -->
+      <div class="bg-white p-3 md:p-6 rounded-xl shadow-md w-full">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-base md:text-lg text-gray-800">Meus Plantões / Escala</h3>
+          <span id="contador-plantoes" class="text-xs bg-indigo-100 text-indigo-800 font-bold px-2.5 py-1 rounded-full">0 plantões</span>
+        </div>
+
+        <div id="lista-plantoes" class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+          <!-- Renderizado dinamicamente via JS -->
+        </div>
+
+        <!-- Paginação -->
+        <div id="paginacao-container" class="flex justify-between items-center mt-4 pt-3 border-t border-gray-100 hidden">
+          <button id="btn-pag-anterior" onclick="mudarPagina(-1)" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg disabled:opacity-50 transition">
+            ◀ Anterior
+          </button>
+          <span id="info-paginacao" class="text-xs font-medium text-gray-600">Página 1</span>
+          <button id="btn-pag-proxima" onclick="mudarPagina(1)" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg disabled:opacity-50 transition">
+            Próxima ▶
+          </button>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- MODAL DE EDIÇÃO / REPASSE -->
+  <div id="modal-editar" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+      <h3 class="text-lg font-bold text-gray-800 mb-4">Alterar / Repassar Plantão</h3>
+      <form onsubmit="salvarEdicaoPlantao(event)" class="flex flex-col gap-3">
+        <div>
+          <label class="text-xs font-bold text-gray-600 block mb-1">Data</label>
+          <input type="date" id="edit-data" required class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-indigo-500">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-bold text-gray-600 block mb-1">Hora Início</label>
+            <input type="time" id="edit-hora-inicio" required class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-600 block mb-1">Hora Fim</label>
+            <input type="time" id="edit-hora-fim" required class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-indigo-500">
+          </div>
+        </div>
+        <div>
+          <label class="text-xs font-bold text-gray-600 block mb-1">Médico(a) Responsável</label>
+          <select id="edit-medico" required class="w-full border border-gray-300 p-2 rounded-lg text-sm outline-none focus:border-indigo-500 bg-white">
+          </select>
+        </div>
+        <div class="flex gap-2 justify-end mt-4">
+          <button type="button" onclick="fecharModalEditar()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-xs font-bold transition">
+            Cancelar
+          </button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition">
+            Salvar Alterações
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 
-    <!-- Bibliotecas do Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore-compat.js"></script>
-
-    <!-- Nosso código JavaScript -->
-    <script src="js/app.js"></script>
+  <!-- SCRIPT JS PRINCIPAL COM PREVENÇÃO DE CACHE DE DISPOSITIVOS MÓVEIS -->
+  <script src="js/app.js?v=2.0"></script>
 </body>
 </html>
