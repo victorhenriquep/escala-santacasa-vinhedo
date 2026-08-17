@@ -754,7 +754,7 @@ function renderizarCalendario() {
                 const horaInicioCurta = p.horaInicio ? p.horaInicio.substring(0, 5) : '';
 
                 return `
-                    <div class="text-[8px] md:text-[10px] p-0.5 rounded border ${corBadge} font-semibold flex items-center justify-between leading-tight overflow-hidden">
+                    <div class="text-[8px] md:text-[10px] p-0.5 rounded border ${corBadge} font-semibold flex items-center justify-between leading-tight overflow-hidden pointer-events-none">
                         <span class="truncate">${nomeFormatado}</span>
                         <span class="text-[7px] md:text-[8px] opacity-80 font-mono hidden md:inline ml-1">${horaInicioCurta}</span>
                     </div>
@@ -762,17 +762,17 @@ function renderizarCalendario() {
             }).join('');
         }
 
-        // Adicionada ação onclick para abrir modal no celular
+        // Alterado para <button> interativo com captura de toque para mobile
         grid.innerHTML += `
-            <div onclick="verDetalhesDia('${dataChave}')" class="p-1 border border-gray-200 rounded min-h-[50px] md:min-h-[75px] bg-white flex flex-col justify-start gap-0.5 cursor-pointer hover:border-indigo-400 active:bg-indigo-50 transition shadow-sm">
-                <div class="flex justify-between items-center">
+            <button type="button" onclick="verDetalhesDia('${dataChave}')" class="w-full text-left p-1 border border-gray-200 rounded min-h-[50px] md:min-h-[75px] bg-white flex flex-col justify-start gap-0.5 cursor-pointer hover:border-indigo-400 active:bg-indigo-100 transition shadow-sm touch-manipulation focus:outline-none select-none">
+                <div class="flex justify-between items-center w-full pointer-events-none">
                     <span class="font-bold text-[10px] md:text-xs ${plantoesNoDia.length > 0 ? 'text-indigo-600' : 'text-gray-700'}">${dia}</span>
                     ${plantoesNoDia.length > 0 ? `<span class="text-[8px] bg-indigo-100 text-indigo-700 font-extrabold px-1 rounded-full md:hidden">${plantoesNoDia.length}</span>` : ''}
                 </div>
-                <div class="flex flex-col gap-0.5 overflow-hidden">
+                <div class="flex flex-col gap-0.5 overflow-hidden w-full pointer-events-none">
                     ${htmlPlantoes}
                 </div>
-            </div>
+            </button>
         `;
     }
 }
