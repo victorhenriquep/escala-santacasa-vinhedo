@@ -83,6 +83,9 @@ function fazerLogout() {
 auth.onAuthStateChanged((user) => {
     const secaoAuth = document.getElementById('secao-auth');
     const secaoApp = document.getElementById('secao-app');
+    const infoUsuario = document.getElementById('info-usuario');
+    const painelRelatorio = document.getElementById('painel-relatorio-medico');
+    const campoSelMedico = document.getElementById('campo-selecionar-medico-relatorio');
 
     if (user) {
         db.collection('usuarios').doc(user.uid).get().then((doc) => {
@@ -92,12 +95,19 @@ auth.onAuthStateChanged((user) => {
                 document.getElementById('nome-usuario-logado').innerText = usuarioAtualDados.nome;
                 document.getElementById('papel-usuario-logado').innerText = usuarioAtualDados.papel === 'admin' ? 'Administrador(a)' : 'Médico(a)';
                 
+                if (infoUsuario) infoUsuario.classList.remove('hidden');
+
                 if (usuarioAtualDados.papel === 'admin') {
                     document.getElementById('painel-admin').classList.remove('hidden');
+                    if (painelRelatorio) painelRelatorio.classList.remove('hidden');
+                    if (campoSelMedico) campoSelMedico.classList.remove('hidden');
                 } else {
                     document.getElementById('painel-admin').classList.add('hidden');
+                    if (painelRelatorio) painelRelatorio.classList.remove('hidden');
+                    if (campoSelMedico) campoSelMedico.classList.add('hidden');
                 }
 
+                definirMesEAnoAtualRelatorio();
                 secaoAuth.classList.add('hidden');
                 secaoApp.classList.remove('hidden');
                 
@@ -108,10 +118,24 @@ auth.onAuthStateChanged((user) => {
         });
     } else {
         usuarioAtualDados = null;
+        if (infoUsuario) infoUsuario.classList.add('hidden');
+        if (painelRelatorio) painelRelatorio.classList.add('hidden');
         secaoAuth.classList.remove('hidden');
         secaoApp.classList.add('hidden');
     }
 });
+
+function definirMesEAnoAtualRelatorio() {
+    const hoje = new Date();
+    const mesStr = String(hoje.getMonth() + 1).padStart(2, '0');
+    const anoStr = String(hoje.getFullYear());
+
+    const selectMes = document.getElementById('relatorio-mes');
+    const inputAno = document.getElementById('relatorio-ano');
+
+    if (selectMes) selectMes.value = mesStr;
+    if (inputAno) inputAno.value = anoStr;
+}
 
 function definirDataMinimaInputs() {
     const hoje = new Date().toISOString().split('T')[0];
@@ -133,38 +157,30 @@ function converterParaMinutos(horaStr) {
     return parseInt(h) * 60 + parseInt(m);
 }
 
-// VALIDAÇÃO DE CONFLITO E LIMITE (Máx 2 Comuns, Máx 1 Emergência no mesmo horário)
-function verificaLimiteEConflito(data, horaInicio, horaFim, tipo, ignorarId = null, medico = null) {
-    const minInicio = converterParaMinutos(horaInicio);
-    let minFim = converterParaMinutos(horaFim);
-    if (minFim <= minInicio) minFim += 24 * 60;
-
-    const plantoesSobrepostos = plantoesDaNuvem.filter(plantao => {
+function verificaLimiteEConflito(data, turno, tipo, ignorarId = null, medico = null) {
+    const plantoesNoTurno = plantoesDaNuvem.filter(plantao => {
         if (ignorarId && plantao.id === ignorarId) return false;
         if (plantao.data !== data) return false;
 
-        const pInicio = converterParaMinutos(plantao.horaInicio);
-        let pFim = converterParaMinutos(plantao.horaFim);
-        if (pFim <= pInicio) pFim += 24 * 60;
-
-        return (minInicio < pFim && minFim > pInicio);
+        const pTurno = plantao.turno || (plantao.horaInicio === '07:00' ? 'dia' : 'noite');
+        return pTurno === turno;
     });
 
     if (medico) {
-        const mesmoMedico = plantoesSobrepostos.some(p => p.medico === medico);
+        const mesmoMedico = plantoesNoTurno.some(p => p.medico === medico);
         if (mesmoMedico) {
-            return { conflito: true, motivo: 'Este médico já possui outro plantão agendado neste mesmo horário.' };
+            return { conflito: true, motivo: 'Este médico já possui um plantão agendado neste mesmo turno.' };
         }
     }
 
-    const mesmoTipoCount = plantoesSobrepostos.filter(p => (p.tipo || 'comum') === tipo).length;
+    const mesmoTipoCount = plantoesNoTurno.filter(p => (p.tipo || 'comum') === tipo).length;
 
     if (tipo === 'emergencia' && mesmoTipoCount >= 1) {
-        return { conflito: true, motivo: 'Limite atingido: já existe 1 médico de Emergência escalado para este horário.' };
+        return { conflito: true, motivo: `Limite atingido: já existe 1 médico de Emergência escalado para o turno da ${turno === 'dia' ? 'Dia' : 'Noite'}.` };
     }
 
     if (tipo === 'comum' && mesmoTipoCount >= 2) {
-        return { conflito: true, motivo: 'Limite atingido: já existem 2 médicos Comuns escalados para este horário.' };
+        return { conflito: true, motivo: `Limite atingido: já existem 2 médicos Comuns escalados para o turno da ${turno === 'dia' ? 'Dia' : 'Noite'}.` };
     }
 
     return { conflito: false };
@@ -195,18 +211,19 @@ function escutarMedicosCadastrados() {
 
 function atualizarSelectsMedicos() {
     const selectNovo = document.getElementById('novo-medico');
-    if (selectNovo) {
-        selectNovo.innerHTML = '<option value="">Selecione o(a) médico(a)...</option>';
-        if (medicosCadastradosList.length === 0) {
-            selectNovo.innerHTML = '<option value="">Nenhum médico cadastrado</option>';
-        } else {
-            medicosCadastradosList.forEach(medico => {
-                const option = document.createElement('option');
-                option.value = medico.nome;
-                option.textContent = medico.nome;
-                selectNovo.appendChild(option);
-            });
-        }
+    const selectRelatorio = document.getElementById('relatorio-medico-select');
+
+    const optionsHTML = medicosCadastradosList.length === 0
+        ? '<option value="">Nenhum médico cadastrado</option>'
+        : '<option value="">Selecione o(a) médico(a)...</option>' + medicosCadastradosList.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
+
+    if (selectNovo) selectNovo.innerHTML = optionsHTML;
+
+    if (selectRelatorio) {
+        const optionsRelatorio = medicosCadastradosList.length === 0
+            ? '<option value="">Nenhum médico cadastrado</option>'
+            : '<option value="todos">-- Todos os Médicos --</option>' + medicosCadastradosList.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
+        selectRelatorio.innerHTML = optionsRelatorio;
     }
 }
 
@@ -239,54 +256,156 @@ function formatarDatasPlantao(dataStr, horaInicio, horaFim) {
 }
 
 function criarPlantao() {
+    if (!usuarioAtualDados || usuarioAtualDados.papel !== 'admin') {
+        Swal.fire({ icon: 'error', title: 'Acesso Negado', text: 'Apenas administradores podem criar plantões.' });
+        return;
+    }
+
     const dataInput = document.getElementById('nova-data').value;
-    const horaInicio = document.getElementById('hora-inicio').value;
-    const horaFim = document.getElementById('hora-fim').value;
+    const turnoInput = document.getElementById('novo-turno').value;
     const tipoInput = document.getElementById('novo-tipo').value || 'comum';
     const medicoInput = document.getElementById('novo-medico').value;
 
-    if (!dataInput || !horaInicio || !horaFim || !medicoInput) {
+    if (!dataInput || !medicoInput) {
         Swal.fire({ icon: 'warning', title: 'Campos Incompletos', text: 'Preencha todos os campos da escala.' });
         return;
     }
+
+    const horaInicio = turnoInput === 'dia' ? '07:00' : '19:00';
+    const horaFim = turnoInput === 'dia' ? '19:00' : '07:00';
 
     if (isDataPassado(dataInput, horaInicio)) {
         Swal.fire({ icon: 'error', title: 'Data Inválida', text: 'Não é possível cadastrar um plantão em uma data/horário passados.' });
         return;
     }
 
-    const checagem = verificaLimiteEConflito(dataInput, horaInicio, horaFim, tipoInput, null, medicoInput);
+    const checagem = verificaLimiteEConflito(dataInput, turnoInput, tipoInput, null, medicoInput);
     if (checagem.conflito) {
         Swal.fire({ icon: 'error', title: 'Regra de Escala', text: checagem.motivo });
         return;
     }
 
+    const eAdmin = usuarioAtualDados.papel === 'admin';
+    const eProprioMedico = medicoInput.trim().toLowerCase() === usuarioAtualDados.nome.trim().toLowerCase();
+
+    const aprovadoAdmin = eAdmin;
+    const aprovadoMedico = eProprioMedico;
+    const statusCalculado = (aprovadoAdmin && aprovadoMedico) ? 'CONFIRMADO' : 'PENDENTE';
+
     const horarioFormatado = `${horaInicio} às ${horaFim}`;
 
     db.collection('plantoes').add({
         data: dataInput,
+        turno: turnoInput,
         horaInicio: horaInicio,
         horaFim: horaFim,
         horario: horarioFormatado,
         tipo: tipoInput,
         medico: medicoInput,
         solicitadoPor: usuarioAtualDados.nome,
-        aprovadoAdmin: true,
-        aprovadoMedico: false,
-        status: "PENDENTE",
+        aprovadoAdmin: aprovadoAdmin,
+        aprovadoMedico: aprovadoMedico,
+        status: statusCalculado,
         solicitouRemocao: false,
         criadoEm: firebase.firestore.FieldValue.serverTimestamp()
     })
     .then(() => {
         Swal.fire({ icon: 'success', title: 'Escalado!', text: 'Plantão cadastrado com sucesso!' });
         document.getElementById('nova-data').value = '';
-        document.getElementById('hora-inicio').value = '';
-        document.getElementById('hora-fim').value = '';
         document.getElementById('novo-medico').value = '';
     })
     .catch((error) => {
         Swal.fire({ icon: 'error', title: 'Erro ao cadastrar', text: error.message });
     });
+}
+
+async function escalarSlotVago(dataStr, turno, tipo) {
+    if (!usuarioAtualDados || usuarioAtualDados.papel !== 'admin') {
+        Swal.fire({ icon: 'error', title: 'Acesso Negado', text: 'Apenas administradores podem adicionar plantões.' });
+        return;
+    }
+
+    const horaInicio = turno === 'dia' ? '07:00' : '19:00';
+    if (isDataPassado(dataStr, horaInicio)) {
+        Swal.fire({ icon: 'error', title: 'Data Inválida', text: 'Não é possível escalar em uma data/horário passados.' });
+        return;
+    }
+
+    if (!medicosCadastradosList || medicosCadastradosList.length === 0) {
+        Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Nenhum médico cadastrado no sistema.' });
+        return;
+    }
+
+    const optionsHtml = medicosCadastradosList.map(m => {
+        return `<option value="${m.nome}">${m.nome}</option>`;
+    }).join('');
+
+    const turnoTexto = turno === 'dia' ? 'Dia (07:00 às 19:00)' : 'Noite (19:00 às 07:00)';
+    const [ano, mes, dia] = dataStr.split('-');
+    const dataFormatada = `${dia}/${mes}/${ano}`;
+
+    const { value: medicoSelecionado } = await Swal.fire({
+        title: '➕ Escalar Plantão Vago',
+        html: `
+            <div class="text-left text-xs md:text-sm space-y-2 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <p><strong>Data:</strong> ${dataFormatada}</p>
+                <p><strong>Turno:</strong> ${turnoTexto}</p>
+                <p><strong>Tipo:</strong> <span class="uppercase font-bold text-indigo-700">${tipo}</span></p>
+            </div>
+            <label class="block text-left text-xs md:text-sm font-bold text-gray-700 mb-1">Selecione o Médico(a):</label>
+            <select id="swal-select-medico" class="w-full border border-gray-300 p-2 md:p-2.5 rounded-md text-xs md:text-sm bg-white outline-none focus:ring-2 focus:ring-[#3f62ad]">
+                ${optionsHtml}
+            </select>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Confirmar Escala',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#3f62ad',
+        focusConfirm: false,
+        preConfirm: () => {
+            const select = document.getElementById('swal-select-medico');
+            return select ? select.value : null;
+        }
+    });
+
+    if (medicoSelecionado) {
+        const horaFim = turno === 'dia' ? '19:00' : '07:00';
+        const checagem = verificaLimiteEConflito(dataStr, turno, tipo, null, medicoSelecionado);
+        if (checagem.conflito) {
+            Swal.fire({ icon: 'error', title: 'Regra de Escala', text: checagem.motivo });
+            return;
+        }
+
+        const eAdmin = usuarioAtualDados.papel === 'admin';
+        const eProprioMedico = medicoSelecionado.trim().toLowerCase() === usuarioAtualDados.nome.trim().toLowerCase();
+
+        const aprovadoAdmin = eAdmin;
+        const aprovadoMedico = eProprioMedico;
+
+        const statusCalculado = (aprovadoAdmin && aprovadoMedico) ? 'CONFIRMADO' : 'PENDENTE';
+
+        db.collection('plantoes').add({
+            data: dataStr,
+            turno: turno,
+            horaInicio: horaInicio,
+            horaFim: horaFim,
+            horario: `${horaInicio} às ${horaFim}`,
+            tipo: tipo,
+            medico: medicoSelecionado,
+            solicitadoPor: usuarioAtualDados.nome,
+            aprovadoAdmin: aprovadoAdmin,
+            aprovadoMedico: aprovadoMedico,
+            status: statusCalculado,
+            solicitouRemocao: false,
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        })
+        .then(() => {
+            Swal.fire({ icon: 'success', title: 'Escalado!', text: 'Plantão cadastrado com sucesso!' });
+        })
+        .catch((err) => {
+            Swal.fire({ icon: 'error', title: 'Erro', text: err.message });
+        });
+    }
 }
 
 function abrirModalEditar(id) {
@@ -295,16 +414,10 @@ function abrirModalEditar(id) {
 
     plantaoEmEdicaoId = id;
     document.getElementById('edit-data').value = plantao.data || '';
-    document.getElementById('edit-tipo').value = plantao.tipo || 'comum';
     
-    if (plantao.horaInicio && plantao.horaFim) {
-        document.getElementById('edit-hora-inicio').value = plantao.horaInicio;
-        document.getElementById('edit-hora-fim').value = plantao.horaFim;
-    } else if (plantao.horario && plantao.horario.includes(' às ')) {
-        const partes = plantao.horario.split(' às ');
-        document.getElementById('edit-hora-inicio').value = partes[0] || '';
-        document.getElementById('edit-hora-fim').value = partes[1] || '';
-    }
+    const turnoCalculado = plantao.turno || (plantao.horaInicio === '07:00' ? 'dia' : 'noite');
+    document.getElementById('edit-turno').value = turnoCalculado;
+    document.getElementById('edit-tipo').value = plantao.tipo || 'comum';
 
     const selectEdit = document.getElementById('edit-medico');
     selectEdit.innerHTML = '<option value="">Selecione o(a) médico(a)...</option>';
@@ -331,22 +444,24 @@ function salvarEdicaoPlantao(event) {
     if (!plantaoEmEdicaoId) return;
 
     const novaData = document.getElementById('edit-data').value;
-    const horaInicio = document.getElementById('edit-hora-inicio').value;
-    const horaFim = document.getElementById('edit-hora-fim').value;
+    const novoTurno = document.getElementById('edit-turno').value;
     const novoTipo = document.getElementById('edit-tipo').value || 'comum';
     const novoMedico = document.getElementById('edit-medico').value;
 
-    if (!novaData || !horaInicio || !horaFim || !novoMedico) {
+    if (!novaData || !novoMedico) {
         Swal.fire({ icon: 'warning', title: 'Campos Incompletos', text: 'Por favor, preencha todos os campos.' });
         return;
     }
+
+    const horaInicio = novoTurno === 'dia' ? '07:00' : '19:00';
+    const horaFim = novoTurno === 'dia' ? '19:00' : '07:00';
 
     if (isDataPassado(novaData, horaInicio)) {
         Swal.fire({ icon: 'error', title: 'Data Inválida', text: 'Não é possível alterar um plantão para uma data passada.' });
         return;
     }
 
-    const checagem = verificaLimiteEConflito(novaData, horaInicio, horaFim, novoTipo, plantaoEmEdicaoId, novoMedico);
+    const checagem = verificaLimiteEConflito(novaData, novoTurno, novoTipo, plantaoEmEdicaoId, novoMedico);
     if (checagem.conflito) {
         Swal.fire({ icon: 'error', title: 'Regra de Escala', text: checagem.motivo });
         return;
@@ -378,6 +493,7 @@ function salvarEdicaoPlantao(event) {
 
     const dadosAtualizados = {
         data: novaData,
+        turno: novoTurno,
         horaInicio: horaInicio,
         horaFim: horaFim,
         horario: horarioFormatado,
@@ -540,7 +656,6 @@ function mudarPagina(delta) {
     renderizarPlantoes();
 }
 
-// RENDERIZAÇÃO FILTRADA DOS CARDS (APENAS PENDÊNCIAS PARA ADMIN)
 function renderizarPlantoes() {
     const conteiner = document.getElementById('lista-plantoes');
     const contador = document.getElementById('contador-plantoes');
@@ -562,11 +677,9 @@ function renderizarPlantoes() {
         const estaConfirmado = (plantao.status === 'CONFIRMADO' || (apAdmin && apMedico)) && !plantao.solicitouRemocao;
 
         if (eAdmin) {
-            // Admin vê EXCLUSIVAMENTE plantões não-confirmados ou com remoção pendente
             return !estaConfirmado;
         }
 
-        // Médicos veem seus próprios plantões
         const eMedicoAtual = plantao.medico && plantao.medico.trim().toLowerCase() === nomeUsuario;
         const eMedicoAnterior = plantao.medicoAnterior && plantao.medicoAnterior.trim().toLowerCase() === nomeUsuario;
         const eSolicitante = plantao.solicitadoPor && plantao.solicitadoPor.trim().toLowerCase() === nomeUsuario;
@@ -578,7 +691,7 @@ function renderizarPlantoes() {
 
     if (plantoesVisiveis.length === 0) {
         const msgVazia = eAdmin ? "Nenhum plantão pendente de aprovação ou remoção." : "Nenhum plantão agendado.";
-        conteiner.innerHTML = `<p class="text-gray-500 text-xs col-span-full bg-white p-3 rounded shadow-sm text-center">${msgVazia}</p>`;
+        conteiner.innerHTML = `<p class="text-gray-500 text-xs md:text-sm lg:text-base col-span-full bg-white p-4 rounded-lg shadow-sm text-center">${msgVazia}</p>`;
         document.getElementById('paginacao-container').classList.add('hidden');
         return;
     }
@@ -600,6 +713,8 @@ function renderizarPlantoes() {
         const apMedico = plantao.aprovadoMedico !== undefined ? plantao.aprovadoMedico : (plantao.status === 'CONFIRMADO');
         const estaConfirmado = plantao.status === 'CONFIRMADO' || (apAdmin && apMedico);
         const remocaoPendente = plantao.solicitouRemocao === true;
+        const pTurno = plantao.turno || (plantao.horaInicio === '07:00' ? 'dia' : 'noite');
+        const isEmergencia = plantao.tipo === 'emergencia';
 
         let corFundo = 'bg-white';
         let corBorda = 'border-gray-300';
@@ -607,9 +722,9 @@ function renderizarPlantoes() {
         let botoesAcao = '';
         let infoAdicional = '';
 
-        const tipoPlantao = plantao.tipo === 'emergencia' ? 'EMERGÊNCIA' : 'COMUM';
-        const badgeTipoColor = plantao.tipo === 'emergencia' ? 'bg-red-100 text-red-800 border-red-300' : 'bg-blue-100 text-blue-800 border-blue-300';
-        const tagTipo = `<span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${badgeTipoColor}">${tipoPlantao}</span>`;
+        const tipoPlantao = isEmergencia ? 'EMERGÊNCIA' : 'COMUM';
+        const badgeTipoColor = isEmergencia ? 'bg-red-100 text-red-800 border-red-300' : 'bg-blue-100 text-blue-800 border-blue-300';
+        const tagTipo = `<span class="text-[9px] md:text-xs font-extrabold px-2 py-0.5 rounded border ${badgeTipoColor}">${tipoPlantao}</span>`;
 
         const eMeuPlantaoAtual = plantao.medico && plantao.medico.trim().toLowerCase() === nomeUsuario;
         const euSoliciteiRemocao = plantao.remocaoSolicitadaPor && plantao.remocaoSolicitadaPor.trim().toLowerCase() === nomeUsuario;
@@ -617,30 +732,40 @@ function renderizarPlantoes() {
         if (remocaoPendente) {
             corFundo = 'bg-red-50';
             corBorda = 'border-red-500';
-            badgeStatus = '<span class="bg-red-200 text-red-900 text-[9px] font-bold px-1.5 py-0.5 rounded">⚠️ REMOÇÃO</span>';
+            badgeStatus = '<span class="bg-red-200 text-red-900 text-[9px] md:text-xs font-bold px-2 py-0.5 rounded">⚠️ REMOÇÃO</span>';
 
             if (euSoliciteiRemocao && !eAdmin) {
-                botoesAcao = `<p class="text-[10px] text-red-800 font-semibold mt-1">Remoção solicitada por você.</p>`;
+                botoesAcao = `<p class="text-[10px] md:text-xs text-red-800 font-semibold mt-2">Remoção solicitada por você.</p>`;
             } else {
                 botoesAcao = `
-                    <div class="mt-2 flex gap-1 w-full">
-                        <button onclick="aprovarRemocaoPlantao('${plantao.id}')" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1 rounded text-[10px] font-bold transition">Aprovar Exclusão</button>
-                        <button onclick="rejeitarRemocaoPlantao('${plantao.id}')" class="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">Manter</button>
+                    <div class="mt-3 flex gap-1.5 w-full">
+                        <button onclick="aprovarRemocaoPlantao('${plantao.id}')" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded text-xs md:text-sm font-bold transition">Aprovar Exclusão</button>
+                        <button onclick="rejeitarRemocaoPlantao('${plantao.id}')" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-xs md:text-sm font-bold transition">Manter</button>
                     </div>
                 `;
             }
         } else if (estaConfirmado) {
-            corFundo = 'bg-green-50/50';
-            corBorda = 'border-green-500';
-            badgeStatus = '<span class="bg-green-200 text-green-800 text-[9px] font-bold px-1.5 py-0.5 rounded">CONFIRMADO</span>';
+            if (isEmergencia) {
+                corFundo = 'bg-red-50/60';
+                corBorda = 'border-red-500';
+                badgeStatus = '<span class="bg-red-200 text-red-900 text-[9px] md:text-xs font-bold px-2 py-0.5 rounded">CONFIRMADO (EMERGÊNCIA)</span>';
+            } else if (pTurno === 'dia') {
+                corFundo = 'bg-blue-50/60';
+                corBorda = 'border-blue-500';
+                badgeStatus = '<span class="bg-blue-200 text-blue-900 text-[9px] md:text-xs font-bold px-2 py-0.5 rounded">CONFIRMADO (DIA)</span>';
+            } else {
+                corFundo = 'bg-green-50/60';
+                corBorda = 'border-green-500';
+                badgeStatus = '<span class="bg-green-200 text-green-900 text-[9px] md:text-xs font-bold px-2 py-0.5 rounded">CONFIRMADO (NOITE)</span>';
+            }
             
             if (eMeuPlantaoAtual || eAdmin) {
                 botoesAcao = `
-                    <div class="mt-2 flex gap-1 w-full">
-                        <button onclick="abrirModalEditar('${plantao.id}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-1 rounded text-[10px] font-bold transition">
+                    <div class="mt-3 flex gap-1.5 w-full">
+                        <button onclick="abrirModalEditar('${plantao.id}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 rounded text-xs md:text-sm font-bold transition">
                             ✏️ Repassar/Editar
                         </button>
-                        <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">
+                        <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded text-xs md:text-sm font-bold transition">
                             🗑️
                         </button>
                     </div>
@@ -651,56 +776,56 @@ function renderizarPlantoes() {
             corBorda = 'border-amber-400';
 
             if (plantao.medicoAnterior && plantao.medicoAnterior !== plantao.medico) {
-                infoAdicional = `<p class="text-[10px] text-purple-700">Repasse: <strong>${plantao.medicoAnterior}</strong> ➔ <strong>${plantao.medico}</strong></p>`;
+                infoAdicional = `<p class="text-[10px] md:text-xs text-purple-700 mt-1">Repasse: <strong>${plantao.medicoAnterior}</strong> ➔ <strong>${plantao.medico}</strong></p>`;
             }
 
             if (!apMedico && !apAdmin) {
                 if (eMeuPlantaoAtual && !eAdmin) {
-                    badgeStatus = '<span class="bg-amber-200 text-amber-900 text-[9px] font-bold px-1.5 py-0.5 rounded">ACEITE PENDENTE</span>';
+                    badgeStatus = '<span class="bg-amber-200 text-amber-900 text-[9px] md:text-xs font-bold px-2 py-0.5 rounded">ACEITE PENDENTE</span>';
                     botoesAcao = `
-                        <div class="mt-2 flex gap-1 w-full">
-                            <button onclick="aceitarPlantaoPeloMedico('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-1 rounded text-[10px] font-bold transition">✅ Aceitar</button>
-                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[10px] font-bold transition">✏️</button>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">🗑️</button>
+                        <div class="mt-3 flex gap-1.5 w-full">
+                            <button onclick="aceitarPlantaoPeloMedico('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded text-xs md:text-sm font-bold transition">✅ Aceitar</button>
+                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded text-xs md:text-sm font-bold transition">✏️</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded text-xs md:text-sm font-bold transition">🗑️</button>
                         </div>
                     `;
                 } else if (eAdmin) {
-                    badgeStatus = '<span class="bg-purple-200 text-purple-900 text-[9px] font-bold px-1.5 py-0.5 rounded">PENDENTE ADMIN/MÉDICO</span>';
+                    badgeStatus = '<span class="bg-purple-200 text-purple-900 text-[9px] md:text-xs font-bold px-2 py-0.5 rounded">PENDENTE ADMIN/MÉDICO</span>';
                     botoesAcao = `
-                        <div class="mt-2 flex gap-1 w-full">
-                            <button onclick="aprovarPlantaoPeloAdmin('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-1 rounded text-[10px] font-bold transition">✅ Aprovar</button>
-                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[10px] font-bold transition">✏️</button>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">🗑️</button>
+                        <div class="mt-3 flex gap-1.5 w-full">
+                            <button onclick="aprovarPlantaoPeloAdmin('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded text-xs md:text-sm font-bold transition">✅ Aprovar</button>
+                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded text-xs md:text-sm font-bold transition">✏️</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded text-xs md:text-sm font-bold transition">🗑️</button>
                         </div>
                     `;
                 } else {
-                    badgeStatus = '<span class="bg-amber-200 text-amber-800 text-[9px] font-bold px-1.5 py-0.5 rounded">PENDENTE</span>';
+                    badgeStatus = '<span class="bg-amber-200 text-amber-800 text-[9px] md:text-xs font-bold px-2 py-0.5 rounded">PENDENTE</span>';
                 }
             } else if (!apMedico && apAdmin) {
                 if (eMeuPlantaoAtual) {
-                    badgeStatus = '<span class="bg-amber-200 text-amber-900 text-[9px] font-bold px-1.5 py-0.5 rounded">ACEITE PENDENTE</span>';
+                    badgeStatus = '<span class="bg-amber-200 text-amber-900 text-[9px] md:text-xs font-bold px-2 py-0.5 rounded">ACEITE PENDENTE</span>';
                     botoesAcao = `
-                        <div class="mt-2 flex gap-1 w-full">
-                            <button onclick="aceitarPlantaoPeloMedico('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-1 rounded text-[10px] font-bold transition">✅ Aceitar</button>
-                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[10px] font-bold transition">✏️ Repassar</button>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">🗑️</button>
+                        <div class="mt-3 flex gap-1.5 w-full">
+                            <button onclick="aceitarPlantaoPeloMedico('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded text-xs md:text-sm font-bold transition">✅ Aceitar</button>
+                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded text-xs md:text-sm font-bold transition">✏️ Repassar</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded text-xs md:text-sm font-bold transition">🗑️</button>
                         </div>
                     `;
                 } else {
-                    badgeStatus = '<span class="bg-blue-200 text-blue-900 text-[9px] font-bold px-1.5 py-0.5 rounded">AGUARDANDO MÉDICO</span>';
+                    badgeStatus = '<span class="bg-blue-200 text-blue-900 text-[9px] md:text-xs font-bold px-2 py-0.5 rounded">AGUARDANDO MÉDICO</span>';
                 }
             } else if (apMedico && !apAdmin) {
                 if (eAdmin) {
-                    badgeStatus = '<span class="bg-indigo-200 text-indigo-900 text-[9px] font-bold px-1.5 py-0.5 rounded">APROVAÇÃO ADMIN</span>';
+                    badgeStatus = '<span class="bg-indigo-200 text-indigo-900 text-[9px] md:text-xs font-bold px-2 py-0.5 rounded">APROVAÇÃO ADMIN</span>';
                     botoesAcao = `
-                        <div class="mt-2 flex gap-1 w-full">
-                            <button onclick="aprovarPlantaoPeloAdmin('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-1 rounded text-[10px] font-bold transition">✅ Aprovar</button>
-                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[10px] font-bold transition">✏️</button>
-                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">🗑️</button>
+                        <div class="mt-3 flex gap-1.5 w-full">
+                            <button onclick="aprovarPlantaoPeloAdmin('${plantao.id}')" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded text-xs md:text-sm font-bold transition">✅ Aprovar</button>
+                            <button onclick="abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded text-xs md:text-sm font-bold transition">✏️</button>
+                            <button onclick="solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1.5 rounded text-xs md:text-sm font-bold transition">🗑️</button>
                         </div>
                     `;
                 } else {
-                    badgeStatus = '<span class="bg-amber-200 text-amber-800 text-[9px] font-bold px-1.5 py-0.5 rounded">AGUARDANDO ADMIN</span>';
+                    badgeStatus = '<span class="bg-amber-200 text-amber-800 text-[9px] md:text-xs font-bold px-2 py-0.5 rounded">AGUARDANDO ADMIN</span>';
                 }
             }
         }
@@ -708,18 +833,18 @@ function renderizarPlantoes() {
         const datasInfo = formatarDatasPlantao(plantao.data, plantao.horaInicio, plantao.horaFim);
 
         const cardHTML = `
-            <div class="${corFundo} border-l-4 ${corBorda} p-2.5 rounded-md shadow-sm flex flex-col justify-between w-full border-y border-r border-gray-200">
+            <div class="${corFundo} border-l-4 ${corBorda} p-3 md:p-4 rounded-lg shadow-sm flex flex-col justify-between w-full border-y border-r border-gray-200">
                 <div>
-                    <div class="flex justify-between items-center gap-1 mb-1">
-                        <span class="text-[10px] font-bold text-gray-600">📅 ${datasInfo.inicio}</span>
+                    <div class="flex justify-between items-center gap-1 mb-1.5">
+                        <span class="text-[10px] md:text-xs font-bold text-gray-600">📅 ${datasInfo.inicio}</span>
                         <div class="flex items-center gap-1">
                             ${tagTipo}
                             ${badgeStatus}
                         </div>
                     </div>
-                    ${datasInfo.legendaTermino ? `<p class="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded mb-1 border border-indigo-100">${datasInfo.legendaTermino}</p>` : ''}
-                    <p class="text-xs font-extrabold text-gray-800 my-0.5">⏰ ${plantao.horario}</p>
-                    <p class="text-xs text-gray-700">👨‍⚕️ <strong>${plantao.medico}</strong></p>
+                    ${datasInfo.legendaTermino ? `<p class="text-[9px] md:text-xs font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded mb-1 border border-indigo-100">${datasInfo.legendaTermino}</p>` : ''}
+                    <p class="text-xs md:text-sm font-extrabold text-gray-800 my-1">⏰ ${plantao.horario}</p>
+                    <p class="text-xs md:text-sm text-gray-700">👨‍⚕️ <strong>${plantao.medico}</strong></p>
                     ${infoAdicional}
                 </div>
                 ${botoesAcao}
@@ -743,6 +868,7 @@ function renderizarCalendario() {
 
     grid.innerHTML = '';
 
+    const hojeObj = new Date();
     const ano = dataCalendarioView.getFullYear();
     const mes = dataCalendarioView.getMonth();
 
@@ -753,13 +879,19 @@ function renderizarCalendario() {
     const totalDiasMes = new Date(ano, mes + 1, 0).getDate();
 
     for (let i = 0; i < primeiroDiaSemana; i++) {
-        grid.innerHTML += `<div class="p-1 bg-gray-50 rounded border border-dashed border-gray-100 min-h-[45px]"></div>`;
+        grid.innerHTML += `<div class="p-1 bg-gray-50 rounded-md border border-dashed border-gray-200 min-h-[50px] md:min-h-[75px] lg:min-h-[90px]"></div>`;
     }
 
     for (let dia = 1; dia <= totalDiasMes; dia++) {
         const diaStr = String(dia).padStart(2, '0');
         const mesStr = String(mes + 1).padStart(2, '0');
         const dataChave = `${ano}-${mesStr}-${diaStr}`;
+
+        const ehHoje = (
+            dia === hojeObj.getDate() &&
+            mes === hojeObj.getMonth() &&
+            ano === hojeObj.getFullYear()
+        );
 
         const plantoesNoDia = plantoesDaNuvem.filter(p => p.data === dataChave);
         let htmlPlantoes = '';
@@ -771,32 +903,45 @@ function renderizarCalendario() {
                 const isConfirmado = p.status === 'CONFIRMADO' || (p.aprovadoAdmin && p.aprovadoMedico);
                 const isRemocao = p.solicitouRemocao === true;
                 const isEmergencia = p.tipo === 'emergencia';
+                const pTurno = p.turno || (p.horaInicio === '07:00' ? 'dia' : 'noite');
 
                 let corBadge = 'bg-amber-100 text-amber-900 border-amber-300';
                 if (isRemocao) {
-                    corBadge = 'bg-red-100 text-red-900 border-red-300';
+                    corBadge = 'bg-purple-100 text-purple-900 border-purple-300';
                 } else if (isConfirmado) {
-                    corBadge = isEmergencia ? 'bg-red-100 text-red-900 border-red-300 font-bold' : 'bg-green-100 text-green-900 border-green-300';
+                    if (isEmergencia) {
+                        corBadge = 'bg-red-100 text-red-900 border-red-400 font-bold';
+                    } else if (pTurno === 'dia') {
+                        corBadge = 'bg-blue-100 text-blue-900 border-blue-400 font-bold';
+                    } else if (pTurno === 'noite') {
+                        corBadge = 'bg-green-100 text-green-900 border-green-400 font-bold';
+                    }
                 }
 
                 const nomeFormatado = formatarNomeMedicoCalendario(p.medico);
                 const tagTipoAbrav = isEmergencia ? '[E]' : '[C]';
 
                 return `
-                    <div class="text-[7px] md:text-[9px] p-0.5 rounded border ${corBadge} flex items-center justify-between leading-tight overflow-hidden pointer-events-none">
+                    <div class="text-[7px] md:text-[10px] lg:text-xs p-0.5 md:p-1 rounded border ${corBadge} flex items-center justify-between leading-tight overflow-hidden pointer-events-none">
                         <span class="truncate">${tagTipoAbrav} ${nomeFormatado}</span>
                     </div>
                 `;
             }).join('');
         }
 
+        const estiloBordaBotao = ehHoje 
+            ? 'border-2 border-[#3f62ad] bg-blue-50/70 ring-2 ring-[#3f62ad]/20 font-black' 
+            : 'border border-gray-200 bg-white';
+
         grid.innerHTML += `
-            <button type="button" onclick="verDetalhesDia('${dataChave}')" class="w-full text-left p-1 border border-gray-200 rounded min-h-[45px] md:min-h-[60px] bg-white flex flex-col justify-start gap-0.5 hover:border-indigo-400 active:bg-indigo-100 transition shadow-sm touch-manipulation focus:outline-none select-none">
+            <button type="button" onclick="verDetalhesDia('${dataChave}')" class="w-full text-left p-1 md:p-2 ${estiloBordaBotao} rounded-lg min-h-[50px] md:min-h-[75px] lg:min-h-[90px] flex flex-col justify-start gap-1 hover:border-indigo-400 active:bg-indigo-100 transition shadow-sm touch-manipulation focus:outline-none select-none">
                 <div class="flex justify-between items-center w-full pointer-events-none">
-                    <span class="font-bold text-[9px] md:text-xs ${plantoesNoDia.length > 0 ? 'text-indigo-600' : 'text-gray-700'}">${dia}</span>
-                    ${plantoesNoDia.length > 0 ? `<span class="text-[7px] bg-indigo-100 text-indigo-700 font-extrabold px-1 rounded-full md:hidden">${plantoesNoDia.length}</span>` : ''}
+                    <span class="font-bold text-[9px] md:text-sm lg:text-base ${ehHoje ? 'text-[#3f62ad] font-black' : (plantoesNoDia.length > 0 ? 'text-indigo-600' : 'text-gray-700')}">
+                        ${dia}
+                    </span>
+                    ${plantoesNoDia.length > 0 ? `<span class="text-[7px] md:text-[10px] bg-indigo-100 text-indigo-700 font-extrabold px-1 md:px-1.5 rounded-full">${plantoesNoDia.length}</span>` : ''}
                 </div>
-                <div class="flex flex-col gap-0.5 overflow-hidden w-full pointer-events-none">
+                <div class="flex flex-col gap-0.5 md:gap-1 overflow-hidden w-full pointer-events-none">
                     ${htmlPlantoes}
                 </div>
             </button>
@@ -804,81 +949,264 @@ function renderizarCalendario() {
     }
 }
 
-// MODAL DO CALENDÁRIO COM AÇÕES DE EDITAR/EXCLUIR
+// RELATÓRIO MENSAL (ACESSÍVEL PARA MÉDICOS E ADMINISTRADORES)
+function gerarRelatorioMensalMedico() {
+    if (!usuarioAtualDados) return;
+
+    const mes = document.getElementById('relatorio-mes').value;
+    const ano = document.getElementById('relatorio-ano').value;
+    const resDiv = document.getElementById('resultado-relatorio');
+
+    if (!mes || !ano) {
+        Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Por favor, selecione um mês e informe um ano válido.' });
+        return;
+    }
+
+    const prefixoData = `${ano}-${mes}`;
+    const eAdmin = usuarioAtualDados.papel === 'admin';
+    
+    let medicoFiltro = '';
+    if (eAdmin) {
+        const selectMedico = document.getElementById('relatorio-medico-select');
+        medicoFiltro = selectMedico ? selectMedico.value : '';
+        if (!medicoFiltro) {
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Por favor, selecione um médico para gerar o relatório.' });
+            return;
+        }
+    } else {
+        medicoFiltro = usuarioAtualDados.nome;
+    }
+
+    const plantoesDoMes = plantoesDaNuvem.filter(p => {
+        if (!p.data || !p.data.startsWith(prefixoData)) return false;
+        
+        // Exibir apenas os plantões que já passaram
+        const horaInicio = p.horaInicio || (p.turno === 'noite' ? '19:00' : '07:00');
+        if (!isDataPassado(p.data, horaInicio)) return false;
+
+        const apAdmin = p.aprovadoAdmin !== undefined ? p.aprovadoAdmin : (p.status === 'CONFIRMADO');
+        const apMedico = p.aprovadoMedico !== undefined ? p.aprovadoMedico : (p.status === 'CONFIRMADO');
+        const isConfirmado = p.status === 'CONFIRMADO' || (apAdmin && apMedico);
+
+        if (!isConfirmado || p.solicitouRemocao) return false;
+
+        if (medicoFiltro !== 'todos') {
+            const eMeuPlantao = p.medico && p.medico.trim().toLowerCase() === medicoFiltro.trim().toLowerCase();
+            if (!eMeuPlantao) return false;
+        }
+
+        return true;
+    });
+
+    plantoesDoMes.sort((a, b) => a.data.localeCompare(b.data));
+
+    const totalPlantoes = plantoesDoMes.length;
+    const totalDia = plantoesDoMes.filter(p => (p.turno || (p.horaInicio === '07:00' ? 'dia' : 'noite')) === 'dia').length;
+    const totalNoite = plantoesDoMes.filter(p => (p.turno || (p.horaInicio === '07:00' ? 'dia' : 'noite')) === 'noite').length;
+    const totalEmergencia = plantoesDoMes.filter(p => p.tipo === 'emergencia').length;
+
+    const nomeMedicoExibicao = medicoFiltro === 'todos' ? 'Todos os Médicos' : medicoFiltro;
+
+    if (totalPlantoes === 0) {
+        resDiv.innerHTML = `<p class="text-gray-500 text-xs md:text-sm italic py-2">Nenhum plantão realizado encontrado para <strong>${nomeMedicoExibicao}</strong> em ${mes}/${ano}.</p>`;
+        resDiv.classList.remove('hidden');
+        return;
+    }
+
+    let tabelaHTML = `
+        <div class="mb-3 text-xs md:text-sm font-bold text-gray-700 bg-gray-100 p-2 rounded-md">
+            👨‍⚕️ Relatório de: <span class="text-[#3f62ad] font-extrabold">${nomeMedicoExibicao}</span> (${mes}/${ano})
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 mb-4">
+            <div class="bg-blue-50 p-2.5 rounded-lg border border-blue-200 text-center">
+                <span class="text-[10px] md:text-xs text-blue-700 font-bold block">Total Realizado</span>
+                <span class="text-base md:text-xl font-extrabold text-blue-900">${totalPlantoes}</span>
+            </div>
+            <div class="bg-amber-50 p-2.5 rounded-lg border border-amber-200 text-center">
+                <span class="text-[10px] md:text-xs text-amber-700 font-bold block">Turno Dia</span>
+                <span class="text-base md:text-xl font-extrabold text-amber-900">${totalDia}</span>
+            </div>
+            <div class="bg-slate-100 p-2.5 rounded-lg border border-slate-300 text-center">
+                <span class="text-[10px] md:text-xs text-slate-700 font-bold block">Turno Noite</span>
+                <span class="text-base md:text-xl font-extrabold text-slate-900">${totalNoite}</span>
+            </div>
+            <div class="bg-red-50 p-2.5 rounded-lg border border-red-200 text-center">
+                <span class="text-[10px] md:text-xs text-red-700 font-bold block">Emergências</span>
+                <span class="text-base md:text-xl font-extrabold text-red-900">${totalEmergencia}</span>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs md:text-sm">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-700 border-b border-gray-200">
+                        <th class="p-2">Data</th>
+                        ${medicoFiltro === 'todos' ? '<th class="p-2">Médico(a)</th>' : ''}
+                        <th class="p-2">Turno</th>
+                        <th class="p-2">Horário</th>
+                        <th class="p-2">Tipo</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+    `;
+
+    plantoesDoMes.forEach(p => {
+        const [a, m, d] = p.data.split('-');
+        const dataFmt = `${d}/${m}/${a}`;
+        const pTurno = p.turno || (p.horaInicio === '07:00' ? 'dia' : 'noite');
+        const turnoFmt = pTurno === 'dia' ? '☀️ Dia' : '🌙 Noite';
+        const tipoFmt = p.tipo === 'emergencia' ? '🚨 Emergência' : 'Comum';
+
+        tabelaHTML += `
+            <tr class="hover:bg-gray-50">
+                <td class="p-2 font-bold text-gray-800">${dataFmt}</td>
+                ${medicoFiltro === 'todos' ? `<td class="p-2 font-bold text-indigo-800">${p.medico}</td>` : ''}
+                <td class="p-2">${turnoFmt}</td>
+                <td class="p-2 font-semibold">${p.horario || `${p.horaInicio} às ${p.horaFim}`}</td>
+                <td class="p-2">${tipoFmt}</td>
+            </tr>
+        `;
+    });
+
+    tabelaHTML += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    resDiv.innerHTML = tabelaHTML;
+    resDiv.classList.remove('hidden');
+}
+
+// MODAL DO CALENDÁRIO COM OS 6 SLOTS FIXOS (OPÇÃO DE APROVAÇÃO DIRETA E ESCALA EXCLUSIVAS PARA ADMIN)
 function verDetalhesDia(dataChave) {
     const plantoesNoDia = plantoesDaNuvem.filter(p => p.data === dataChave);
     const [ano, mes, dia] = dataChave.split('-');
     const dataFormatada = `${dia}/${mes}/${ano}`;
 
-    if (plantoesNoDia.length === 0) {
-        Swal.fire({
-            title: `📅 ${dataFormatada}`,
-            text: 'Nenhum plantão agendado para esta data.',
-            icon: 'info',
-            confirmButtonText: 'Fechar',
-            confirmButtonColor: '#3f62ad'
-        });
-        return;
-    }
-
-    plantoesNoDia.sort((a, b) => (a.horaInicio || '').localeCompare(b.horaInicio || ''));
-
     const eAdmin = usuarioAtualDados && usuarioAtualDados.papel === 'admin';
     const nomeUsuario = usuarioAtualDados ? usuarioAtualDados.nome.trim().toLowerCase() : '';
 
-    let htmlConteudo = `<div class="flex flex-col gap-2 text-left max-h-[60vh] overflow-y-auto pr-1 mt-2">`;
+    const renderSlot = (titulo, plantao, turno, tipo) => {
+        if (!plantao) {
+            const botaoEscalar = eAdmin ? `
+                <button onclick="Swal.close(); escalarSlotVago('${dataChave}', '${turno}', '${tipo}')" class="bg-indigo-50 hover:bg-indigo-100 text-[#3f62ad] border border-[#3f62ad]/30 px-2.5 py-1 md:px-3 md:py-1.5 rounded-md text-xs md:text-sm font-bold transition flex items-center gap-1 shadow-sm">
+                    ➕ Escalar
+                </button>
+            ` : '';
 
-    plantoesNoDia.forEach(p => {
-        const isConfirmado = p.status === 'CONFIRMADO' || (p.aprovadoAdmin && p.aprovadoMedico);
-        const isRemocao = p.solicitouRemocao === true;
-        const tipoStr = p.tipo === 'emergencia' ? '🚨 Emergência' : '🩺 Comum';
-
-        let statusBadge = '<span class="bg-amber-100 text-amber-800 text-[9px] px-1.5 py-0.5 rounded font-bold">PENDENTE</span>';
-        if (isRemocao) {
-            statusBadge = '<span class="bg-red-100 text-red-800 text-[9px] px-1.5 py-0.5 rounded font-bold">REMOÇÃO</span>';
-        } else if (isConfirmado) {
-            statusBadge = '<span class="bg-green-100 text-green-800 text-[9px] px-1.5 py-0.5 rounded font-bold">CONFIRMADO</span>';
-        }
-
-        const eMeuPlantao = p.medico && p.medico.trim().toLowerCase() === nomeUsuario;
-
-        let botoesModal = '';
-        if (eAdmin || eMeuPlantao) {
-            botoesModal = `
-                <div class="mt-2 pt-2 border-t border-gray-200 flex gap-1 justify-end">
-                    <button onclick="Swal.close(); abrirModalEditar('${p.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded text-[10px] font-bold transition flex items-center gap-1">
-                        ✏️ Editar / Repassar
-                    </button>
-                    <button onclick="Swal.close(); ${isRemocao ? `aprovarRemocaoPlantao('${p.id}')` : `solicitarRemocaoPlantao('${p.id}')`}" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition flex items-center gap-1">
-                        🗑️ Excluir
-                    </button>
+            return `
+                <div class="bg-white/80 border border-dashed border-gray-300 p-2 md:p-3 rounded-lg flex justify-between items-center hover:border-indigo-300 transition">
+                    <div>
+                        <span class="text-[10px] md:text-xs font-bold text-gray-500 block">${titulo}</span>
+                        <span class="text-xs md:text-sm text-gray-400 italic">-- Vago --</span>
+                    </div>
+                    ${botaoEscalar}
                 </div>
             `;
         }
 
-        htmlConteudo += `
-            <div class="bg-gray-50 border border-gray-200 p-2.5 rounded shadow-sm">
+        const apAdmin = plantao.aprovadoAdmin !== undefined ? plantao.aprovadoAdmin : (plantao.status === 'CONFIRMADO');
+        const apMedico = plantao.aprovadoMedico !== undefined ? plantao.aprovadoMedico : (plantao.status === 'CONFIRMADO');
+        const isConfirmado = plantao.status === 'CONFIRMADO' || (apAdmin && apMedico);
+        const isRemocao = plantao.solicitouRemocao === true;
+        const isEmergencia = plantao.tipo === 'emergencia';
+        const pTurno = plantao.turno || (plantao.horaInicio === '07:00' ? 'dia' : 'noite');
+
+        let statusBadge = '<span class="bg-amber-100 text-amber-800 text-[9px] md:text-xs px-2 py-0.5 rounded font-bold">PENDENTE</span>';
+        if (isRemocao) {
+            statusBadge = '<span class="bg-purple-100 text-purple-800 text-[9px] md:text-xs px-2 py-0.5 rounded font-bold">REMOÇÃO</span>';
+        } else if (isConfirmado) {
+            if (isEmergencia) {
+                statusBadge = '<span class="bg-red-100 text-red-800 border border-red-300 text-[9px] md:text-xs px-2 py-0.5 rounded font-bold">EMERGÊNCIA</span>';
+            } else if (pTurno === 'dia') {
+                statusBadge = '<span class="bg-blue-100 text-blue-800 border border-blue-300 text-[9px] md:text-xs px-2 py-0.5 rounded font-bold">CONFIRMADO (DIA)</span>';
+            } else {
+                statusBadge = '<span class="bg-green-100 text-green-800 border border-green-300 text-[9px] md:text-xs px-2 py-0.5 rounded font-bold">CONFIRMADO (NOITE)</span>';
+            }
+        }
+
+        const eMeuPlantao = plantao.medico && plantao.medico.trim().toLowerCase() === nomeUsuario;
+
+        let botoesModal = '';
+        if (eAdmin || eMeuPlantao) {
+            let acoesAdminEspeciais = '';
+            
+            if (eAdmin) {
+                if (isRemocao) {
+                    acoesAdminEspeciais += `<button onclick="Swal.close(); aprovarRemocaoPlantao('${plantao.id}')" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-[10px] md:text-xs font-bold transition">✅ Aprovar Exclusão</button>`;
+                } else if (!apAdmin) {
+                    acoesAdminEspeciais += `<button onclick="Swal.close(); aprovarPlantaoPeloAdmin('${plantao.id}')" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-[10px] md:text-xs font-bold transition">✅ Aprovar</button>`;
+                }
+            } else if (eMeuPlantao && !apMedico && !isRemocao) {
+                acoesAdminEspeciais += `<button onclick="Swal.close(); aceitarPlantaoPeloMedico('${plantao.id}')" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-[10px] md:text-xs font-bold transition">✅ Aceitar</button>`;
+            }
+
+            botoesModal = `
+                <div class="mt-2 pt-1.5 border-t border-gray-100 flex flex-wrap gap-1.5 justify-end">
+                    ${acoesAdminEspeciais}
+                    <button onclick="Swal.close(); abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded text-[10px] md:text-xs font-bold transition">✏️ Editar</button>
+                    ${!isRemocao ? `<button onclick="Swal.close(); solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-[10px] md:text-xs font-bold transition">🗑️ Excluir</button>` : ''}
+                </div>
+            `;
+        }
+
+        return `
+            <div class="bg-white border border-gray-200 p-2.5 md:p-3 rounded-lg shadow-sm">
                 <div class="flex justify-between items-center mb-1">
-                    <span class="font-bold text-gray-800 text-xs">👨‍⚕️ ${p.medico}</span>
+                    <span class="text-[10px] md:text-xs font-bold text-gray-500">${titulo}</span>
                     ${statusBadge}
                 </div>
-                <p class="text-[11px] font-semibold text-indigo-900 mb-1">Tipo: ${tipoStr}</p>
-                <p class="text-xs text-gray-700 font-semibold my-0.5">⏰ Horário: <strong>${p.horario}</strong></p>
-                ${p.solicitadoPor ? `<p class="text-[9px] text-gray-500">Escalado por: ${p.solicitadoPor}</p>` : ''}
+                <p class="text-xs md:text-sm font-extrabold text-gray-800">👨‍⚕️ ${plantao.medico}</p>
                 ${botoesModal}
             </div>
         `;
-    });
+    };
 
-    htmlConteudo += `</div>`;
+    const diaPlantoes = plantoesNoDia.filter(p => (p.turno || (p.horaInicio === '07:00' ? 'dia' : 'noite')) === 'dia');
+    const noitePlantoes = plantoesNoDia.filter(p => (p.turno || (p.horaInicio === '07:00' ? 'dia' : 'noite')) === 'noite');
+
+    const comunsDia = diaPlantoes.filter(p => p.tipo !== 'emergencia');
+    const emergenciasDia = diaPlantoes.filter(p => p.tipo === 'emergencia');
+
+    const comunsNoite = noitePlantoes.filter(p => p.tipo !== 'emergencia');
+    const emergenciasNoite = noitePlantoes.filter(p => p.tipo === 'emergencia');
+
+    let htmlConteudo = `
+        <div class="flex flex-col gap-3 md:gap-4 text-left max-h-[70vh] overflow-y-auto pr-1 mt-2">
+            <!-- TURNO DIA -->
+            <div class="bg-amber-50/70 border border-amber-200 p-3 md:p-4 rounded-xl">
+                <h4 class="font-bold text-xs md:text-sm text-amber-900 mb-2.5 flex items-center justify-between">
+                    <span>☀️ DIA (07:00 às 19:00)</span>
+                    <span class="text-[10px] md:text-xs font-normal text-amber-700">${diaPlantoes.length}/3 Escala</span>
+                </h4>
+                <div class="grid grid-cols-1 gap-2">
+                    ${renderSlot('Comum 1', comunsDia[0], 'dia', 'comum')}
+                    ${renderSlot('Comum 2', comunsDia[1], 'dia', 'comum')}
+                    ${renderSlot('Emergência', emergenciasDia[0], 'dia', 'emergencia')}
+                </div>
+            </div>
+
+            <!-- TURNO NOITE -->
+            <div class="bg-slate-100/80 border border-slate-300 p-3 md:p-4 rounded-xl">
+                <h4 class="font-bold text-xs md:text-sm text-slate-800 mb-2.5 flex items-center justify-between">
+                    <span>🌙 NOITE (19:00 às 07:00)</span>
+                    <span class="text-[10px] md:text-xs font-normal text-slate-600">${noitePlantoes.length}/3 Escala</span>
+                </h4>
+                <div class="grid grid-cols-1 gap-2">
+                    ${renderSlot('Comum 1', comunsNoite[0], 'noite', 'comum')}
+                    ${renderSlot('Comum 2', comunsNoite[1], 'noite', 'comum')}
+                    ${renderSlot('Emergência', emergenciasNoite[0], 'noite', 'emergencia')}
+                </div>
+            </div>
+        </div>
+    `;
 
     Swal.fire({
-        title: `📅 Plantões do Dia ${dataFormatada}`,
+        title: `📅 Escala de ${dataFormatada}`,
         html: htmlConteudo,
         confirmButtonText: 'Fechar',
         confirmButtonColor: '#3f62ad',
-        customClass: {
-            popup: 'rounded-xl',
-        }
+        customClass: { popup: 'rounded-2xl max-w-lg md:max-w-xl' }
     });
 }
