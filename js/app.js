@@ -960,9 +960,21 @@ function renderizarCalendario() {
         const plantoesNoDia = plantoesDaNuvem.filter(p => p.data === dataChave);
         let htmlPlantoes = '';
 
-        if (plantoesNoDia.length > 0) {
-            plantoesNoDia.sort((a, b) => (a.horaInicio || '').localeCompare(b.horaInicio || ''));
+      if (plantoesNoDia.length > 0) {
+    // Define o peso/ordem de cada combinação (Turno + Tipo)
+    const obterOrdemSlot = (p) => {
+        const turno = p.turno || (p.horaInicio === '07:00' ? 'dia' : 'noite');
+        const tipo = p.tipo || 'comum';
 
+        if (turno === 'dia' && tipo === 'comum') return 1;        // MÉDICO COMUM MANHÃ
+        if (turno === 'dia' && tipo === 'emergencia') return 2;   // MEDICO EMERGENCIA MANHÃ
+        if (turno === 'noite' && tipo === 'comum') return 3;      // MÉDICO COMUM NOITE
+        if (turno === 'noite' && tipo === 'emergencia') return 4; // MEDICO EMERGENCIA NOITE
+        return 5;
+    };
+
+    // Ordena garantindo a sequência pedida
+    plantoesNoDia.sort((a, b) => obterOrdemSlot(a) - obterOrdemSlot(b));
             htmlPlantoes = plantoesNoDia.map(p => {
                 const isConfirmado = p.status === 'CONFIRMADO' || (p.aprovadoAdmin && p.aprovadoMedico);
                 const isRemocao = p.solicitouRemocao === true;
