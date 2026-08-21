@@ -38,6 +38,64 @@ function alternarModoAuth() {
     
     document.getElementById('campo-nome').classList.toggle('hidden', !modoCadastro);
     document.getElementById('campo-papel').classList.toggle('hidden', !modoCadastro);
+    
+    const btnEsqueceu = document.getElementById('btn-esqueceu-senha');
+    if (btnEsqueceu) {
+        btnEsqueceu.classList.toggle('hidden', modoCadastro);
+    }
+}
+
+// Redefinição de Senha Nativa Gratuita (Firebase Auth)
+function esqueciMinhaSenha() {
+    const emailInput = document.getElementById('auth-email').value.trim();
+
+    Swal.fire({
+        title: '🔑 Redefinição de Senha',
+        text: 'Informe seu e-mail cadastrado para receber o link de redefinição de senha:',
+        input: 'email',
+        inputValue: emailInput,
+        inputPlaceholder: 'seu@email.com',
+        showCancelButton: true,
+        confirmButtonText: 'Enviar Link',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#3f62ad',
+        cancelButtonColor: '#6b7280',
+        customClass: { popup: 'swal2-responsive-popup' },
+        inputValidator: (value) => {
+            if (!value) {
+                return 'Por favor, digite seu e-mail!';
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            const emailParaEnviar = result.value.trim();
+            auth.sendPasswordResetEmail(emailParaEnviar)
+                .then(() => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'E-mail Enviado!',
+                        text: `Um link para redefinição de senha foi enviado para ${emailParaEnviar}. Verifique sua caixa de entrada e spam.`,
+                        confirmButtonColor: '#3f62ad',
+                        customClass: { popup: 'swal2-responsive-popup' }
+                    });
+                })
+                .catch((error) => {
+                    let mensagemErro = 'Não foi possível enviar o e-mail de redefinição.';
+                    if (error.code === 'auth/user-not-found') {
+                        mensagemErro = 'Não existe usuário cadastrado com este e-mail.';
+                    } else if (error.code === 'auth/invalid-email') {
+                        mensagemErro = 'O formato do e-mail informado é inválido.';
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro ao Enviar',
+                        text: mensagemErro,
+                        confirmButtonColor: '#3f62ad',
+                        customClass: { popup: 'swal2-responsive-popup' }
+                    });
+                });
+        }
+    });
 }
 
 function manipularAuth(event) {
@@ -50,7 +108,7 @@ function manipularAuth(event) {
         const papel = document.getElementById('auth-papel').value;
 
         if (!nome) {
-            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Por favor, preencha o nome completo.' });
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Por favor, preencha o nome completo.', customClass: { popup: 'swal2-responsive-popup' } });
             return;
         }
 
@@ -63,15 +121,15 @@ function manipularAuth(event) {
                 });
             })
             .then(() => {
-                Swal.fire({ icon: 'success', title: 'Sucesso', text: 'Conta criada com sucesso na Santa Casa de Vinhedo!' });
+                Swal.fire({ icon: 'success', title: 'Sucesso', text: 'Conta criada com sucesso na Santa Casa de Vinhedo!', customClass: { popup: 'swal2-responsive-popup' } });
             })
             .catch((error) => {
-                Swal.fire({ icon: 'error', title: 'Erro ao criar conta', text: error.message });
+                Swal.fire({ icon: 'error', title: 'Erro ao criar conta', text: error.message, customClass: { popup: 'swal2-responsive-popup' } });
             });
     } else {
         auth.signInWithEmailAndPassword(email, senha)
             .catch((error) => {
-                Swal.fire({ icon: 'error', title: 'Erro ao fazer login', text: error.message });
+                Swal.fire({ icon: 'error', title: 'Erro ao fazer login', text: error.message, customClass: { popup: 'swal2-responsive-popup' } });
             });
     }
 }
@@ -257,7 +315,7 @@ function formatarDatasPlantao(dataStr, horaInicio, horaFim) {
 
 function criarPlantao() {
     if (!usuarioAtualDados || usuarioAtualDados.papel !== 'admin') {
-        Swal.fire({ icon: 'error', title: 'Acesso Negado', text: 'Apenas administradores podem criar plantões.' });
+        Swal.fire({ icon: 'error', title: 'Acesso Negado', text: 'Apenas administradores podem criar plantões.', customClass: { popup: 'swal2-responsive-popup' } });
         return;
     }
 
@@ -267,7 +325,7 @@ function criarPlantao() {
     const medicoInput = document.getElementById('novo-medico').value;
 
     if (!dataInput || !medicoInput) {
-        Swal.fire({ icon: 'warning', title: 'Campos Incompletos', text: 'Preencha todos os campos da escala.' });
+        Swal.fire({ icon: 'warning', title: 'Campos Incompletos', text: 'Preencha todos os campos da escala.', customClass: { popup: 'swal2-responsive-popup' } });
         return;
     }
 
@@ -275,13 +333,13 @@ function criarPlantao() {
     const horaFim = turnoInput === 'dia' ? '19:00' : '07:00';
 
     if (isDataPassado(dataInput, horaInicio)) {
-        Swal.fire({ icon: 'error', title: 'Data Inválida', text: 'Não é possível cadastrar um plantão em uma data/horário passados.' });
+        Swal.fire({ icon: 'error', title: 'Data Inválida', text: 'Não é possível cadastrar um plantão em uma data/horário passados.', customClass: { popup: 'swal2-responsive-popup' } });
         return;
     }
 
     const checagem = verificaLimiteEConflito(dataInput, turnoInput, tipoInput, null, medicoInput);
     if (checagem.conflito) {
-        Swal.fire({ icon: 'error', title: 'Regra de Escala', text: checagem.motivo });
+        Swal.fire({ icon: 'error', title: 'Regra de Escala', text: checagem.motivo, customClass: { popup: 'swal2-responsive-popup' } });
         return;
     }
 
@@ -310,29 +368,29 @@ function criarPlantao() {
         criadoEm: firebase.firestore.FieldValue.serverTimestamp()
     })
     .then(() => {
-        Swal.fire({ icon: 'success', title: 'Escalado!', text: 'Plantão cadastrado com sucesso!' });
+        Swal.fire({ icon: 'success', title: 'Escalado!', text: 'Plantão cadastrado com sucesso!', customClass: { popup: 'swal2-responsive-popup' } });
         document.getElementById('nova-data').value = '';
         document.getElementById('novo-medico').value = '';
     })
     .catch((error) => {
-        Swal.fire({ icon: 'error', title: 'Erro ao cadastrar', text: error.message });
+        Swal.fire({ icon: 'error', title: 'Erro ao cadastrar', text: error.message, customClass: { popup: 'swal2-responsive-popup' } });
     });
 }
 
 async function escalarSlotVago(dataStr, turno, tipo) {
     if (!usuarioAtualDados || usuarioAtualDados.papel !== 'admin') {
-        Swal.fire({ icon: 'error', title: 'Acesso Negado', text: 'Apenas administradores podem adicionar plantões.' });
+        Swal.fire({ icon: 'error', title: 'Acesso Negado', text: 'Apenas administradores podem adicionar plantões.', customClass: { popup: 'swal2-responsive-popup' } });
         return;
     }
 
     const horaInicio = turno === 'dia' ? '07:00' : '19:00';
     if (isDataPassado(dataStr, horaInicio)) {
-        Swal.fire({ icon: 'error', title: 'Data Inválida', text: 'Não é possível escalar em uma data/horário passados.' });
+        Swal.fire({ icon: 'error', title: 'Data Inválida', text: 'Não é possível escalar em uma data/horário passados.', customClass: { popup: 'swal2-responsive-popup' } });
         return;
     }
 
     if (!medicosCadastradosList || medicosCadastradosList.length === 0) {
-        Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Nenhum médico cadastrado no sistema.' });
+        Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Nenhum médico cadastrado no sistema.', customClass: { popup: 'swal2-responsive-popup' } });
         return;
     }
 
@@ -347,13 +405,13 @@ async function escalarSlotVago(dataStr, turno, tipo) {
     const { value: medicoSelecionado } = await Swal.fire({
         title: '➕ Escalar Plantão Vago',
         html: `
-            <div class="text-left text-xs md:text-sm space-y-2 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <div class="text-left text-xs sm:text-sm space-y-1.5 mb-3 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
                 <p><strong>Data:</strong> ${dataFormatada}</p>
                 <p><strong>Turno:</strong> ${turnoTexto}</p>
                 <p><strong>Tipo:</strong> <span class="uppercase font-bold text-indigo-700">${tipo}</span></p>
             </div>
-            <label class="block text-left text-xs md:text-sm font-bold text-gray-700 mb-1">Selecione o Médico(a):</label>
-            <select id="swal-select-medico" class="w-full border border-gray-300 p-2 md:p-2.5 rounded-md text-xs md:text-sm bg-white outline-none focus:ring-2 focus:ring-[#3f62ad]">
+            <label class="block text-left text-xs sm:text-sm font-bold text-gray-700 mb-1">Selecione o Médico(a):</label>
+            <select id="swal-select-medico" class="w-full border border-gray-300 p-2 rounded-md text-xs sm:text-sm bg-white outline-none focus:ring-2 focus:ring-[#3f62ad]">
                 ${optionsHtml}
             </select>
         `,
@@ -361,6 +419,7 @@ async function escalarSlotVago(dataStr, turno, tipo) {
         confirmButtonText: 'Confirmar Escala',
         cancelButtonText: 'Cancelar',
         confirmButtonColor: '#3f62ad',
+        customClass: { popup: 'swal2-responsive-popup' },
         focusConfirm: false,
         preConfirm: () => {
             const select = document.getElementById('swal-select-medico');
@@ -372,7 +431,7 @@ async function escalarSlotVago(dataStr, turno, tipo) {
         const horaFim = turno === 'dia' ? '19:00' : '07:00';
         const checagem = verificaLimiteEConflito(dataStr, turno, tipo, null, medicoSelecionado);
         if (checagem.conflito) {
-            Swal.fire({ icon: 'error', title: 'Regra de Escala', text: checagem.motivo });
+            Swal.fire({ icon: 'error', title: 'Regra de Escala', text: checagem.motivo, customClass: { popup: 'swal2-responsive-popup' } });
             return;
         }
 
@@ -400,10 +459,10 @@ async function escalarSlotVago(dataStr, turno, tipo) {
             criadoEm: firebase.firestore.FieldValue.serverTimestamp()
         })
         .then(() => {
-            Swal.fire({ icon: 'success', title: 'Escalado!', text: 'Plantão cadastrado com sucesso!' });
+            Swal.fire({ icon: 'success', title: 'Escalado!', text: 'Plantão cadastrado com sucesso!', customClass: { popup: 'swal2-responsive-popup' } });
         })
         .catch((err) => {
-            Swal.fire({ icon: 'error', title: 'Erro', text: err.message });
+            Swal.fire({ icon: 'error', title: 'Erro', text: err.message, customClass: { popup: 'swal2-responsive-popup' } });
         });
     }
 }
@@ -449,7 +508,7 @@ function salvarEdicaoPlantao(event) {
     const novoMedico = document.getElementById('edit-medico').value;
 
     if (!novaData || !novoMedico) {
-        Swal.fire({ icon: 'warning', title: 'Campos Incompletos', text: 'Por favor, preencha todos os campos.' });
+        Swal.fire({ icon: 'warning', title: 'Campos Incompletos', text: 'Por favor, preencha todos os campos.', customClass: { popup: 'swal2-responsive-popup' } });
         return;
     }
 
@@ -457,13 +516,13 @@ function salvarEdicaoPlantao(event) {
     const horaFim = novoTurno === 'dia' ? '19:00' : '07:00';
 
     if (isDataPassado(novaData, horaInicio)) {
-        Swal.fire({ icon: 'error', title: 'Data Inválida', text: 'Não é possível alterar um plantão para uma data passada.' });
+        Swal.fire({ icon: 'error', title: 'Data Inválida', text: 'Não é possível alterar um plantão para uma data passada.', customClass: { popup: 'swal2-responsive-popup' } });
         return;
     }
 
     const checagem = verificaLimiteEConflito(novaData, novoTurno, novoTipo, plantaoEmEdicaoId, novoMedico);
     if (checagem.conflito) {
-        Swal.fire({ icon: 'error', title: 'Regra de Escala', text: checagem.motivo });
+        Swal.fire({ icon: 'error', title: 'Regra de Escala', text: checagem.motivo, customClass: { popup: 'swal2-responsive-popup' } });
         return;
     }
 
@@ -510,11 +569,11 @@ function salvarEdicaoPlantao(event) {
 
     db.collection('plantoes').doc(plantaoEmEdicaoId).update(dadosAtualizados)
         .then(() => {
-            Swal.fire({ icon: 'success', title: 'Atualizado', text: 'Alteração salva com sucesso.' });
+            Swal.fire({ icon: 'success', title: 'Atualizado', text: 'Alteração salva com sucesso.', customClass: { popup: 'swal2-responsive-popup' } });
             fecharModalEditar();
         })
         .catch(err => {
-            Swal.fire({ icon: 'error', title: 'Erro ao salvar', text: err.message });
+            Swal.fire({ icon: 'error', title: 'Erro ao salvar', text: err.message, customClass: { popup: 'swal2-responsive-popup' } });
         });
 }
 
@@ -527,7 +586,8 @@ function aceitarPlantaoPeloMedico(id) {
         confirmButtonColor: '#16a34a',
         cancelButtonColor: '#6b7280',
         confirmButtonText: 'Sim, aceitar',
-        cancelButtonText: 'Cancelar'
+        cancelButtonText: 'Cancelar',
+        customClass: { popup: 'swal2-responsive-popup' }
     }).then((result) => {
         if (result.isConfirmed) {
             const plantao = plantoesDaNuvem.find(p => p.id === id);
@@ -539,7 +599,7 @@ function aceitarPlantaoPeloMedico(id) {
                 status: novoStatus,
                 confirmadoPorMedico: usuarioAtualDados.nome
             }).then(() => {
-                Swal.fire('Confirmado!', 'O plantão foi aceito com sucesso.', 'success');
+                Swal.fire({ title: 'Confirmado!', text: 'O plantão foi aceito com sucesso.', icon: 'success', customClass: { popup: 'swal2-responsive-popup' } });
             });
         }
     });
@@ -554,7 +614,8 @@ function aprovarPlantaoPeloAdmin(id) {
         confirmButtonColor: '#16a34a',
         cancelButtonColor: '#6b7280',
         confirmButtonText: 'Sim, aprovar',
-        cancelButtonText: 'Cancelar'
+        cancelButtonText: 'Cancelar',
+        customClass: { popup: 'swal2-responsive-popup' }
     }).then((result) => {
         if (result.isConfirmed) {
             const plantao = plantoesDaNuvem.find(p => p.id === id);
@@ -566,7 +627,7 @@ function aprovarPlantaoPeloAdmin(id) {
                 status: novoStatus,
                 confirmadoPorAdmin: usuarioAtualDados.nome
             }).then(() => {
-                Swal.fire('Aprovado!', 'Alteração aprovada com sucesso.', 'success');
+                Swal.fire({ title: 'Aprovado!', text: 'Alteração aprovada com sucesso.', icon: 'success', customClass: { popup: 'swal2-responsive-popup' } });
             });
         }
     });
@@ -581,7 +642,8 @@ function solicitarRemocaoPlantao(id) {
         confirmButtonColor: '#ef4444',
         cancelButtonColor: '#6b7280',
         confirmButtonText: 'Sim, remover',
-        cancelButtonText: 'Manter'
+        cancelButtonText: 'Manter',
+        customClass: { popup: 'swal2-responsive-popup' }
     }).then((result) => {
         if (result.isConfirmed) {
             db.collection('plantoes').doc(id).update({
@@ -589,7 +651,7 @@ function solicitarRemocaoPlantao(id) {
                 remocaoSolicitadaPor: usuarioAtualDados.nome,
                 statusRemocao: 'PENDENTE_REMOCAO'
             }).then(() => {
-                Swal.fire('Solicitado!', 'Solicitação de remoção registrada.', 'info');
+                Swal.fire({ title: 'Solicitado!', text: 'Solicitação de remoção registrada.', icon: 'info', customClass: { popup: 'swal2-responsive-popup' } });
             });
         }
     });
@@ -604,11 +666,12 @@ function aprovarRemocaoPlantao(id) {
         confirmButtonColor: '#ef4444',
         cancelButtonColor: '#6b7280',
         confirmButtonText: 'Excluir',
-        cancelButtonText: 'Cancelar'
+        cancelButtonText: 'Cancelar',
+        customClass: { popup: 'swal2-responsive-popup' }
     }).then((result) => {
         if (result.isConfirmed) {
             db.collection('plantoes').doc(id).delete().then(() => {
-                Swal.fire('Excluído!', 'Plantão removido com sucesso.', 'success');
+                Swal.fire({ title: 'Excluído!', text: 'Plantão removido com sucesso.', icon: 'success', customClass: { popup: 'swal2-responsive-popup' } });
             });
         }
     });
@@ -623,7 +686,8 @@ function rejeitarRemocaoPlantao(id) {
         confirmButtonColor: '#2563eb',
         cancelButtonColor: '#6b7280',
         confirmButtonText: 'Manter',
-        cancelButtonText: 'Voltar'
+        cancelButtonText: 'Voltar',
+        customClass: { popup: 'swal2-responsive-popup' }
     }).then((result) => {
         if (result.isConfirmed) {
             db.collection('plantoes').doc(id).update({
@@ -631,7 +695,7 @@ function rejeitarRemocaoPlantao(id) {
                 remocaoSolicitadaPor: firebase.firestore.FieldValue.delete(),
                 statusRemocao: firebase.firestore.FieldValue.delete()
             }).then(() => {
-                Swal.fire('Mantido!', 'Pedido de remoção cancelado.', 'success');
+                Swal.fire({ title: 'Mantido!', text: 'Pedido de remoção cancelado.', icon: 'success', customClass: { popup: 'swal2-responsive-popup' } });
             });
         }
     });
@@ -835,7 +899,7 @@ function renderizarPlantoes() {
         const cardHTML = `
             <div class="${corFundo} border-l-4 ${corBorda} p-3 md:p-4 rounded-lg shadow-sm flex flex-col justify-between w-full border-y border-r border-gray-200">
                 <div>
-                    <div class="flex justify-between items-center gap-1 mb-1.5">
+                    <div class="flex justify-between items-center gap-1 mb-1.5 flex-wrap">
                         <span class="text-[10px] md:text-xs font-bold text-gray-600">📅 ${datasInfo.inicio}</span>
                         <div class="flex items-center gap-1">
                             ${tagTipo}
@@ -879,7 +943,7 @@ function renderizarCalendario() {
     const totalDiasMes = new Date(ano, mes + 1, 0).getDate();
 
     for (let i = 0; i < primeiroDiaSemana; i++) {
-        grid.innerHTML += `<div class="p-1 bg-gray-50 rounded-md border border-dashed border-gray-200 min-h-[50px] md:min-h-[75px] lg:min-h-[90px]"></div>`;
+        grid.innerHTML += `<div class="p-0.5 sm:p-1 bg-gray-50 rounded-md border border-dashed border-gray-200 min-h-[45px] sm:min-h-[60px] md:min-h-[75px] lg:min-h-[90px]"></div>`;
     }
 
     for (let dia = 1; dia <= totalDiasMes; dia++) {
@@ -922,7 +986,7 @@ function renderizarCalendario() {
                 const tagTipoAbrav = isEmergencia ? '[E]' : '[C]';
 
                 return `
-                    <div class="text-[7px] md:text-[10px] lg:text-xs p-0.5 md:p-1 rounded border ${corBadge} flex items-center justify-between leading-tight overflow-hidden pointer-events-none">
+                    <div class="text-[7px] sm:text-[8px] md:text-[10px] lg:text-xs p-0.5 rounded border ${corBadge} flex items-center justify-between leading-tight overflow-hidden pointer-events-none">
                         <span class="truncate">${tagTipoAbrav} ${nomeFormatado}</span>
                     </div>
                 `;
@@ -934,14 +998,14 @@ function renderizarCalendario() {
             : 'border border-gray-200 bg-white';
 
         grid.innerHTML += `
-            <button type="button" onclick="verDetalhesDia('${dataChave}')" class="w-full text-left p-1 md:p-2 ${estiloBordaBotao} rounded-lg min-h-[50px] md:min-h-[75px] lg:min-h-[90px] flex flex-col justify-start gap-1 hover:border-indigo-400 active:bg-indigo-100 transition shadow-sm touch-manipulation focus:outline-none select-none">
+            <button type="button" onclick="verDetalhesDia('${dataChave}')" class="w-full text-left p-0.5 sm:p-1 md:p-2 ${estiloBordaBotao} rounded-lg min-h-[45px] sm:min-h-[60px] md:min-h-[75px] lg:min-h-[90px] flex flex-col justify-start gap-0.5 sm:gap-1 hover:border-indigo-400 active:bg-indigo-100 transition shadow-sm touch-manipulation focus:outline-none select-none">
                 <div class="flex justify-between items-center w-full pointer-events-none">
-                    <span class="font-bold text-[9px] md:text-sm lg:text-base ${ehHoje ? 'text-[#3f62ad] font-black' : (plantoesNoDia.length > 0 ? 'text-indigo-600' : 'text-gray-700')}">
+                    <span class="font-bold text-[9px] sm:text-xs md:text-sm lg:text-base ${ehHoje ? 'text-[#3f62ad] font-black' : (plantoesNoDia.length > 0 ? 'text-indigo-600' : 'text-gray-700')}">
                         ${dia}
                     </span>
-                    ${plantoesNoDia.length > 0 ? `<span class="text-[7px] md:text-[10px] bg-indigo-100 text-indigo-700 font-extrabold px-1 md:px-1.5 rounded-full">${plantoesNoDia.length}</span>` : ''}
+                    ${plantoesNoDia.length > 0 ? `<span class="text-[6px] sm:text-[7px] md:text-[10px] bg-indigo-100 text-indigo-700 font-extrabold px-1 rounded-full">${plantoesNoDia.length}</span>` : ''}
                 </div>
-                <div class="flex flex-col gap-0.5 md:gap-1 overflow-hidden w-full pointer-events-none">
+                <div class="flex flex-col gap-0.5 overflow-hidden w-full pointer-events-none">
                     ${htmlPlantoes}
                 </div>
             </button>
@@ -958,7 +1022,7 @@ function gerarRelatorioMensalMedico() {
     const resDiv = document.getElementById('resultado-relatorio');
 
     if (!mes || !ano) {
-        Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Por favor, selecione um mês e informe um ano válido.' });
+        Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Por favor, selecione um mês e informe um ano válido.', customClass: { popup: 'swal2-responsive-popup' } });
         return;
     }
 
@@ -970,7 +1034,7 @@ function gerarRelatorioMensalMedico() {
         const selectMedico = document.getElementById('relatorio-medico-select');
         medicoFiltro = selectMedico ? selectMedico.value : '';
         if (!medicoFiltro) {
-            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Por favor, selecione um médico para gerar o relatório.' });
+            Swal.fire({ icon: 'warning', title: 'Atenção', text: 'Por favor, selecione um médico para gerar o relatório.', customClass: { popup: 'swal2-responsive-popup' } });
             return;
         }
     } else {
@@ -1018,21 +1082,21 @@ function gerarRelatorioMensalMedico() {
             👨‍⚕️ Relatório de: <span class="text-[#3f62ad] font-extrabold">${nomeMedicoExibicao}</span> (${mes}/${ano})
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 mb-4">
-            <div class="bg-blue-50 p-2.5 rounded-lg border border-blue-200 text-center">
+            <div class="bg-blue-50 p-2 sm:p-2.5 rounded-lg border border-blue-200 text-center">
                 <span class="text-[10px] md:text-xs text-blue-700 font-bold block">Total Realizado</span>
-                <span class="text-base md:text-xl font-extrabold text-blue-900">${totalPlantoes}</span>
+                <span class="text-sm sm:text-base md:text-xl font-extrabold text-blue-900">${totalPlantoes}</span>
             </div>
-            <div class="bg-amber-50 p-2.5 rounded-lg border border-amber-200 text-center">
+            <div class="bg-amber-50 p-2 sm:p-2.5 rounded-lg border border-amber-200 text-center">
                 <span class="text-[10px] md:text-xs text-amber-700 font-bold block">Turno Dia</span>
-                <span class="text-base md:text-xl font-extrabold text-amber-900">${totalDia}</span>
+                <span class="text-sm sm:text-base md:text-xl font-extrabold text-amber-900">${totalDia}</span>
             </div>
-            <div class="bg-slate-100 p-2.5 rounded-lg border border-slate-300 text-center">
+            <div class="bg-slate-100 p-2 sm:p-2.5 rounded-lg border border-slate-300 text-center">
                 <span class="text-[10px] md:text-xs text-slate-700 font-bold block">Turno Noite</span>
-                <span class="text-base md:text-xl font-extrabold text-slate-900">${totalNoite}</span>
+                <span class="text-sm sm:text-base md:text-xl font-extrabold text-slate-900">${totalNoite}</span>
             </div>
-            <div class="bg-red-50 p-2.5 rounded-lg border border-red-200 text-center">
+            <div class="bg-red-50 p-2 sm:p-2.5 rounded-lg border border-red-200 text-center">
                 <span class="text-[10px] md:text-xs text-red-700 font-bold block">Emergências</span>
-                <span class="text-base md:text-xl font-extrabold text-red-900">${totalEmergencia}</span>
+                <span class="text-sm sm:text-base md:text-xl font-extrabold text-red-900">${totalEmergencia}</span>
             </div>
         </div>
 
@@ -1090,16 +1154,16 @@ function verDetalhesDia(dataChave) {
     const renderSlot = (titulo, plantao, turno, tipo) => {
         if (!plantao) {
             const botaoEscalar = eAdmin ? `
-                <button onclick="Swal.close(); escalarSlotVago('${dataChave}', '${turno}', '${tipo}')" class="bg-indigo-50 hover:bg-indigo-100 text-[#3f62ad] border border-[#3f62ad]/30 px-2.5 py-1 md:px-3 md:py-1.5 rounded-md text-xs md:text-sm font-bold transition flex items-center gap-1 shadow-sm">
+                <button onclick="Swal.close(); escalarSlotVago('${dataChave}', '${turno}', '${tipo}')" class="bg-indigo-50 hover:bg-indigo-100 text-[#3f62ad] border border-[#3f62ad]/30 px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-[11px] sm:text-xs md:text-sm font-bold transition flex items-center gap-1 shadow-sm shrink-0">
                     ➕ Escalar
                 </button>
             ` : '';
 
             return `
-                <div class="bg-white/80 border border-dashed border-gray-300 p-2 md:p-3 rounded-lg flex justify-between items-center hover:border-indigo-300 transition">
-                    <div>
-                        <span class="text-[10px] md:text-xs font-bold text-gray-500 block">${titulo}</span>
-                        <span class="text-xs md:text-sm text-gray-400 italic">-- Vago --</span>
+                <div class="bg-white/80 border border-dashed border-gray-300 p-2 sm:p-2.5 rounded-lg flex justify-between items-center gap-1 hover:border-indigo-300 transition">
+                    <div class="min-w-0 flex-1">
+                        <span class="text-[10px] sm:text-xs font-bold text-gray-500 block truncate">${titulo}</span>
+                        <span class="text-xs sm:text-sm text-gray-400 italic">-- Vago --</span>
                     </div>
                     ${botaoEscalar}
                 </div>
@@ -1113,16 +1177,16 @@ function verDetalhesDia(dataChave) {
         const isEmergencia = plantao.tipo === 'emergencia';
         const pTurno = plantao.turno || (plantao.horaInicio === '07:00' ? 'dia' : 'noite');
 
-        let statusBadge = '<span class="bg-amber-100 text-amber-800 text-[9px] md:text-xs px-2 py-0.5 rounded font-bold">PENDENTE</span>';
+        let statusBadge = '<span class="bg-amber-100 text-amber-800 text-[8px] sm:text-[9px] md:text-xs px-1.5 py-0.5 rounded font-bold shrink-0">PENDENTE</span>';
         if (isRemocao) {
-            statusBadge = '<span class="bg-purple-100 text-purple-800 text-[9px] md:text-xs px-2 py-0.5 rounded font-bold">REMOÇÃO</span>';
+            statusBadge = '<span class="bg-purple-100 text-purple-800 text-[8px] sm:text-[9px] md:text-xs px-1.5 py-0.5 rounded font-bold shrink-0">REMOÇÃO</span>';
         } else if (isConfirmado) {
             if (isEmergencia) {
-                statusBadge = '<span class="bg-red-100 text-red-800 border border-red-300 text-[9px] md:text-xs px-2 py-0.5 rounded font-bold">EMERGÊNCIA</span>';
+                statusBadge = '<span class="bg-red-100 text-red-800 border border-red-300 text-[8px] sm:text-[9px] md:text-xs px-1.5 py-0.5 rounded font-bold shrink-0">EMERGÊNCIA</span>';
             } else if (pTurno === 'dia') {
-                statusBadge = '<span class="bg-blue-100 text-blue-800 border border-blue-300 text-[9px] md:text-xs px-2 py-0.5 rounded font-bold">CONFIRMADO (DIA)</span>';
+                statusBadge = '<span class="bg-blue-100 text-blue-800 border border-blue-300 text-[8px] sm:text-[9px] md:text-xs px-1.5 py-0.5 rounded font-bold shrink-0">CONFIRMADO (DIA)</span>';
             } else {
-                statusBadge = '<span class="bg-green-100 text-green-800 border border-green-300 text-[9px] md:text-xs px-2 py-0.5 rounded font-bold">CONFIRMADO (NOITE)</span>';
+                statusBadge = '<span class="bg-green-100 text-green-800 border border-green-300 text-[8px] sm:text-[9px] md:text-xs px-1.5 py-0.5 rounded font-bold shrink-0">CONFIRMADO (NOITE)</span>';
             }
         }
 
@@ -1145,19 +1209,19 @@ function verDetalhesDia(dataChave) {
             botoesModal = `
                 <div class="mt-2 pt-1.5 border-t border-gray-100 flex flex-wrap gap-1.5 justify-end">
                     ${acoesAdminEspeciais}
-                    <button onclick="Swal.close(); abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded text-[10px] md:text-xs font-bold transition">✏️ Editar</button>
-                    ${!isRemocao ? `<button onclick="Swal.close(); solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-[10px] md:text-xs font-bold transition">🗑️ Excluir</button>` : ''}
+                    <button onclick="Swal.close(); abrirModalEditar('${plantao.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-[10px] md:text-xs font-bold transition">✏️ Editar</button>
+                    ${!isRemocao ? `<button onclick="Swal.close(); solicitarRemocaoPlantao('${plantao.id}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] md:text-xs font-bold transition">🗑️ Excluir</button>` : ''}
                 </div>
             `;
         }
 
         return `
-            <div class="bg-white border border-gray-200 p-2.5 md:p-3 rounded-lg shadow-sm">
-                <div class="flex justify-between items-center mb-1">
-                    <span class="text-[10px] md:text-xs font-bold text-gray-500">${titulo}</span>
+            <div class="bg-white border border-gray-200 p-2 sm:p-2.5 rounded-lg shadow-sm">
+                <div class="flex justify-between items-center mb-1 gap-1">
+                    <span class="text-[10px] sm:text-xs font-bold text-gray-500 truncate">${titulo}</span>
                     ${statusBadge}
                 </div>
-                <p class="text-xs md:text-sm font-extrabold text-gray-800">👨‍⚕️ ${plantao.medico}</p>
+                <p class="text-xs sm:text-sm font-extrabold text-gray-800 truncate">👨‍⚕️ ${plantao.medico}</p>
                 ${botoesModal}
             </div>
         `;
@@ -1173,14 +1237,14 @@ function verDetalhesDia(dataChave) {
     const emergenciasNoite = noitePlantoes.filter(p => p.tipo === 'emergencia');
 
     let htmlConteudo = `
-        <div class="flex flex-col gap-3 md:gap-4 text-left max-h-[70vh] overflow-y-auto pr-1 mt-2">
+        <div class="flex flex-col gap-2.5 sm:gap-3.5 text-left max-h-[65vh] overflow-y-auto pr-0.5 mt-1">
             <!-- TURNO DIA -->
-            <div class="bg-amber-50/70 border border-amber-200 p-3 md:p-4 rounded-xl">
-                <h4 class="font-bold text-xs md:text-sm text-amber-900 mb-2.5 flex items-center justify-between">
+            <div class="bg-amber-50/70 border border-amber-200 p-2.5 sm:p-3 md:p-4 rounded-xl">
+                <h4 class="font-bold text-xs sm:text-sm text-amber-900 mb-2 flex items-center justify-between">
                     <span>☀️ DIA (07:00 às 19:00)</span>
-                    <span class="text-[10px] md:text-xs font-normal text-amber-700">${diaPlantoes.length}/3 Escala</span>
+                    <span class="text-[10px] sm:text-xs font-normal text-amber-700">${diaPlantoes.length}/3 Escala</span>
                 </h4>
-                <div class="grid grid-cols-1 gap-2">
+                <div class="grid grid-cols-1 gap-1.5 sm:gap-2">
                     ${renderSlot('Comum 1', comunsDia[0], 'dia', 'comum')}
                     ${renderSlot('Comum 2', comunsDia[1], 'dia', 'comum')}
                     ${renderSlot('Emergência', emergenciasDia[0], 'dia', 'emergencia')}
@@ -1188,12 +1252,12 @@ function verDetalhesDia(dataChave) {
             </div>
 
             <!-- TURNO NOITE -->
-            <div class="bg-slate-100/80 border border-slate-300 p-3 md:p-4 rounded-xl">
-                <h4 class="font-bold text-xs md:text-sm text-slate-800 mb-2.5 flex items-center justify-between">
+            <div class="bg-slate-100/80 border border-slate-300 p-2.5 sm:p-3 md:p-4 rounded-xl">
+                <h4 class="font-bold text-xs sm:text-sm text-slate-800 mb-2 flex items-center justify-between">
                     <span>🌙 NOITE (19:00 às 07:00)</span>
-                    <span class="text-[10px] md:text-xs font-normal text-slate-600">${noitePlantoes.length}/3 Escala</span>
+                    <span class="text-[10px] sm:text-xs font-normal text-slate-600">${noitePlantoes.length}/3 Escala</span>
                 </h4>
-                <div class="grid grid-cols-1 gap-2">
+                <div class="grid grid-cols-1 gap-1.5 sm:gap-2">
                     ${renderSlot('Comum 1', comunsNoite[0], 'noite', 'comum')}
                     ${renderSlot('Comum 2', comunsNoite[1], 'noite', 'comum')}
                     ${renderSlot('Emergência', emergenciasNoite[0], 'noite', 'emergencia')}
@@ -1207,6 +1271,6 @@ function verDetalhesDia(dataChave) {
         html: htmlConteudo,
         confirmButtonText: 'Fechar',
         confirmButtonColor: '#3f62ad',
-        customClass: { popup: 'rounded-2xl max-w-lg md:max-w-xl' }
+        customClass: { popup: 'swal2-responsive-popup' }
     });
 }
